@@ -36,7 +36,7 @@
 
 1. 打开 `clash-mi-detail.yaml`。
 2. 在 `proxy-providers` 里,把 `url: "机场订阅地址"` 换成你机场的真实订阅链接,并把 `机场名称` 改成你机场的名字。
-3. (可选)如果你介意默认的 `secret: "123456"`,改掉它。
+3. (可选)如果你介意默认的 `secret`(占位符),改成你自己的强密码。
 4. 将该文件作为配置 / 订阅导入 Clash Mi(或其他 Mihomo 客户端)。
 
 ## 分组结构
@@ -63,7 +63,6 @@
 
 ```
 RULE-SET Proxy / Domain,国外      # 明确要加速的海外域名 → 国外
-RULE-SET Globe / Domain,国外      # 全球大合集(blackmatrix7 Global)→ 国外
 RULE-SET Direct / Domain,国内     # 已知直连域名 → 国内
 RULE-SET China / Domain,国内      # 中国大陆域名 → 国内
 RULE-SET China / IP,国内          # 大陆 IP → 国内
@@ -84,7 +83,7 @@ MATCH,其他                        # 其余全部 → 其他
 ## 注意
 
 - 这是**模板**——使用前必须填入你自己的机场订阅链接。
-- `secret: "123456"` 是默认的 API 控制器密钥;若你的实例可被外部访问,建议修改。
+- `secret` 是 API 控制器密钥(当前为占位符);若你的实例可被外部访问,务必改成你自己的强密码。
 - `gh-proxy.com` 偶发限流(返回 403),重试或重新加载即可。
 
 ## 许可

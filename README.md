@@ -38,7 +38,7 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 
 1. Open `clash-mi-detail.yaml`.
 2. In `proxy-providers`, replace `url: "机场订阅地址"` with your real airport (provider) subscription URL, and rename `机场名称`.
-3. (Optional) Change `secret: "123456"` if you care.
+3. (Optional) Change `secret` (placeholder) to your own strong password if you care.
 4. Import the file into Clash Mi (or any Mihomo client) as a config / override subscription.
 
 ## Group Layout / 分组结构
@@ -65,7 +65,6 @@ Rules match top-down (first match wins). The fallback funnel:
 
 ```
 RULE-SET Proxy / Domain,国外      # well-known accelerated foreign domains → 国外
-RULE-SET Globe / Domain,国外      # global big collection (blackmatrix7 Global) → 国外
 RULE-SET Direct / Domain,国内     # known direct domains → 国内
 RULE-SET China / Domain,国内      # mainland China domains → 国内
 RULE-SET China / IP,国内          # mainland IPs → 国内
@@ -86,7 +85,7 @@ All providers are fetched via `gh-proxy.com` (China GitHub mirror) from:
 ## Note / 注意
 
 - This is a **template** — you must fill in your own airport subscription URL before use.
-- `secret: "123456"` is the default API controller secret; change it if your instance is reachable externally.
+- `secret` is the API controller secret (currently a placeholder); change it to your own strong password if your instance is reachable externally.
 - Rule-set URLs may occasionally be rate-limited by `gh-proxy.com` (403). Retry or reload to resolve.
 
 ## License / 许可

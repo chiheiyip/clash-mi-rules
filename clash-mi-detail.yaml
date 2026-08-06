@@ -100,7 +100,7 @@ dns:
   listen: 0.0.0.0:7874
   ipv6: true
   enhanced-mode: fake-ip
-  fake-ip-range: 198.20.0.1/16
+  fake-ip-range: 198.18.0.1/16
   nameserver:
     - 223.5.5.5
   fake-ip-filter-mode: blacklist
@@ -414,8 +414,8 @@ rules:
   - RULE-SET,Disney / Domain,Stream Media
   - RULE-SET,HBO / Domain,Stream Media
   - RULE-SET,Amazon / Domain,Stream Media
-  - RULE-SET,Crunchyroll / Domain,Stream Media
-  - RULE-SET,Popcorn / Domain,Stream Media
+  # Crunchyroll / Popcorn 合并为 Anime(统一走 geosite/anime.mrs 动漫合集)
+  - RULE-SET,Anime / Domain,Stream Media
 
   # ---- 云/系统 ----
   - RULE-SET,Google / Domain,Google
@@ -533,9 +533,8 @@ rule-providers:
   Disney / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/disney.mrs"}
   HBO / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/hbo.mrs"}
   Amazon / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs"}
-  # Crunchyroll/Popcorn 无独立规则集,统一走 geosite/anime.mrs(动漫合集,含 ACG 站点)
-  Crunchyroll / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
-  Popcorn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
+  # Crunchyroll/Popcorn 无独立规则集,合并为 Anime 统一走 geosite/anime.mrs(动漫合集,含 ACG 站点)
+  Anime / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
 
   # ---- 云/系统 ----
   Google / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/google.mrs"}
