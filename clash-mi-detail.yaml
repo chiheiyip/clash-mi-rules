@@ -89,7 +89,8 @@ mode: rule
 log-level: info
 
 external-controller: 0.0.0.0:9090
-secret: "123456"
+# 控制接口密码:请改为足够复杂的自定义密码(不要用 123456)
+secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 
 # ========================
 # DNS 设置
@@ -135,7 +136,6 @@ profile:
 default: &default
   type: select
   proxies:
-    - 直连
     - 所有-自动
     - 所有-手动
     - 香港-故转
@@ -156,6 +156,7 @@ default: &default
     - 德国-手动
     - 其他-故转
     - 其他-手动
+    - 直连
     - 拒绝
 
 proxy-groups:
@@ -199,7 +200,14 @@ proxy-groups:
   - {name: 国外, <<: *default}
   - {name: 国内, <<: *default}
   - {name: 其他, <<: *default}
-  - {name: Block, <<: *default}
+  # Block 组:默认拒绝,不继承 default(后者默认走代理)
+  - name: Block
+    type: select
+    proxies:
+      - 拒绝
+      - 直连
+      - 所有-自动
+      - 所有-手动
 
   # 全局手选/自动
   - name: 所有-手动
@@ -388,7 +396,8 @@ rules:
 
   # ---- 社交 ----
   - RULE-SET,X / Domain,X
-  - RULE-SET,X / IP,X,no-resolve  - RULE-SET,Instagram / Domain,Instagram
+  - RULE-SET,X / IP,X,no-resolve
+  - RULE-SET,Instagram / Domain,Instagram
   - RULE-SET,Telegram / Domain,Telegram
   - RULE-SET,Telegram / IP,Telegram,no-resolve
   - RULE-SET,WhatsApp / Domain,WhatsApp
@@ -458,8 +467,8 @@ rules:
   - DOMAIN-SUFFIX,myip.wtf,Test
   - DOMAIN-SUFFIX,ipinfo.cc,Test
   - RULE-SET,Block / Domain,Block
+  # Proxy/Globe 历史上同指 Global.list 造成重复,这里只保留一条全局代理规则
   - RULE-SET,Proxy / Domain,国外
-  - RULE-SET,Globe / Domain,国外
   - RULE-SET,Direct / Domain,国内
   - RULE-SET,China / Domain,国内
   - RULE-SET,China / IP,国内,no-resolve
@@ -524,8 +533,9 @@ rule-providers:
   Disney / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/disney.mrs"}
   HBO / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/hbo.mrs"}
   Amazon / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs"}
-  Crunchyroll / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs"}
-  Popcorn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs"}
+  # Crunchyroll/Popcorn 无独立规则集,统一走 geosite/anime.mrs(动漫合集,含 ACG 站点)
+  Crunchyroll / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
+  Popcorn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
 
   # ---- 云/系统 ----
   Google / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/google.mrs"}
@@ -556,7 +566,7 @@ rule-providers:
   Test / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Speedtest/Speedtest.list"}
   Block / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Advertising/Advertising.list"}
   Proxy / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global.list"}
-  Globe / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global.list"}
+  # Globe 已并入 Proxy(原同指 Global.list),仅保留一个全局代理 provider
   Direct / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Direct/Direct.list"}
   China / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/cn.mrs"}
   China / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/cn.mrs"}
