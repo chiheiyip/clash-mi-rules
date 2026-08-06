@@ -442,6 +442,15 @@ rules:
   - RULE-SET,OKX / Domain,Crypto
   - RULE-SET,Bybit / Domain,Crypto
   - RULE-SET,Binance / Domain,Crypto
+  # 加密货币/交易站点域名直配(放入 Crypto 组,位于兜底规则之前,确保优先命中)
+  - DOMAIN-SUFFIX,krak.app,Crypto
+  - DOMAIN-SUFFIX,kraken.com,Crypto
+  - DOMAIN-SUFFIX,bybit.eu,Crypto
+  - DOMAIN-SUFFIX,ether.fi,Crypto
+  - DOMAIN-SUFFIX,trading212.com,Crypto
+  - DOMAIN-SUFFIX,monese.com,Crypto
+  - DOMAIN-SUFFIX,myfin.bg,Crypto
+  - DOMAIN-SUFFIX,altery.com,Crypto
 
   # ---- 测试与兜底 ----
   - RULE-SET,Test / Domain,Test
