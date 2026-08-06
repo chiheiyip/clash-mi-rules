@@ -51,7 +51,7 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 - **Streaming (4)**: Netflix / YouTube / Spotify / Stream Media (Disney, HBO, Amazon, Crunchyroll, Popcorn…)
 - **Cloud & System (5)**: Google / Microsoft / Apple / Nvidia / Cloud (Adobe…)
 - **Gaming (1)**: Games (Steam, Epic, EA, Blizzard, UBI, PlayStation, Nintendo…)
-- **Crypto (1)**: Crypto (OKX, Bybit, Binance…)
+- **Crypto (1)**: Crypto (OKX, Bybit, Binance, Kraken, Bybit EU, Ether.fi, Trading 212, Monese, Myfin, Altery…)
 - **Fallback (5)**: Test / 国外 / 国内 / 其他 / Block
 
 ### Region / Strategy Groups / 地区与策略组

@@ -49,7 +49,7 @@
 - **流媒体(4)**:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Amazon、Crunchyroll、Popcorn…)
 - **云与系统(5)**:Google / Microsoft / Apple / Nvidia / Cloud(Adobe…)
 - **游戏(1)**:Games(Steam、Epic、EA、Blizzard、UBI、PlayStation、Nintendo…)
-- **Crypto(1)**:Crypto(OKX、Bybit、Binance…)
+- **Crypto(1)**:Crypto(OKX、Bybit、Binance、Kraken、Bybit EU、Ether.fi、Trading 212、Monese、Myfin、Altery…)
 - **兜底(5)**:Test / 国外 / 国内 / 其他 / Block
 
 ### 地区与策略组
