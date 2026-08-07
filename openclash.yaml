@@ -93,6 +93,32 @@ external-controller: 0.0.0.0:9090
 secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 
 # ========================
+# 回国服务端 Listener(VLESS + Reality)
+# ========================
+# 【需要 Mihomo 内核 >= 1.18,支持 listeners + listener 固定 proxy;本配置面向 v1.19.14】
+# 说明:此 listener 只在 Cudy 本机 127.0.0.1:10443 监听,不直接暴露公网。
+#       由 VPS 上的 SSH 反向隧道(127.0.0.1:24443 -> SSH -> Cudy 127.0.0.1:10443)唯一入口顶上来。
+#       Reality 在 Cudy 此处终止,解密后连接固定走 `直连` 出站 -> 从校园网 WAN 发出。
+# 注意:以下 UUID / private-key / short-id / dest / server-names 均为占位符,真实值只填在 Cudy 本地配置。
+listeners:
+  - name: vless-reality-in
+    type: vless
+    listen: 127.0.0.1
+    port: 10443
+    proxy: 直连
+    users:
+      - uuid: "YOUR_REALITY_UUID_PLACEHOLDER"
+        flow: xtls-rprx-vision
+    reality:
+      dest: "www.apple.com:443"
+      private-key: "YOUR_REALITY_PRIVATE_KEY_PLACEHOLDER"
+      public-key: "YOUR_REALITY_PUBLIC_KEY_PLACEHOLDER"
+      short-id:
+        - "YOUR_REALITY_SHORT_ID_PLACEHOLDER"
+      server-names:
+        - "www.apple.com"
+
+# ========================
 # DNS 设置
 # ========================
 dns:
@@ -386,12 +412,14 @@ proxy-groups:
 # 规则引擎（rules）
 # ========================
 rules:
+  # 【回国服务端专用】SSH 隧道出口域名放行直连,避免 Cudy→VPS 的底层连接被再次套代理(环路)
+  # 注:此处不用 IP-CIDR,以域名匹配,后续更换 VPS 无需改此文件(VPS IP 跟随 tunnel.scut.me 解析)
+  - DOMAIN,tunnel.scut.me,直连
   # 校园网 + 系统网络连通性检测:强制直连(避免被代理导致校园网认证/Windows 无网络误判)
   - DOMAIN-SUFFIX,scut.edu.cn,直连
   - DOMAIN,s.scut.edu.cn,直连
   - DOMAIN-SUFFIX,msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftncsi.com,直连
-  - DOMAIN,tunnel.scut.me,直连
   # ---- AI ----
   - RULE-SET,ChatGPT / Domain,ChatGPT
   - RULE-SET,Claude / Domain,Claude
