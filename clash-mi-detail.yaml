@@ -386,12 +386,6 @@ proxy-groups:
 # 规则引擎（rules）
 # ========================
 rules:
-  # 校园网 + 系统网络连通性检测:强制直连(避免被代理导致校园网认证/Windows 无网络误判)
-  - DOMAIN-SUFFIX,scut.edu.cn,直连
-  - DOMAIN,s.scut.edu.cn,直连
-  - DOMAIN-SUFFIX,msftconnecttest.com,直连
-  - DOMAIN-SUFFIX,msftncsi.com,直连
-  - DOMAIN,tunnel.scut.me,直连
   # ---- AI ----
   - RULE-SET,ChatGPT / Domain,ChatGPT
   - RULE-SET,Claude / Domain,Claude
