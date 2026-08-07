@@ -412,10 +412,8 @@ proxy-groups:
 # ========================
 rules:
   # 【回国服务端专用】Cudy→VPS 底层 SSH 连接强制直连,避免被再次套代理(环路)
-  #   - tunnel.scut.me:SSH 隧道出口域名(换 VPS 无需改动,IP 跟随域名解析)
-  #   - VPS 公网 IP:SSH 直连目标。注:此处为写死的占位符,若更换 VPS 需同步更新此 IP
+  #   此处只按域名放行 tunnel.scut.me(SSH 隧道出口),不写死 VPS 公网 IP——后续更换 VPS 无需改此文件(IP 跟随域名解析)
   - DOMAIN,tunnel.scut.me,直连
-  - IP-CIDR,YOUR_VPS_PUBLIC_IP_SINGLE,直连,no-resolve
   # 校园网 + 系统网络连通性检测:强制直连(避免被代理导致校园网认证/Windows 无网络误判)
   - DOMAIN-SUFFIX,scut.edu.cn,直连
   - DOMAIN,s.scut.edu.cn,直连
