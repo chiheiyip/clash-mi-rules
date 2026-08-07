@@ -198,7 +198,14 @@ proxy-groups:
   # ---- 兜底 ----
   - {name: Test, <<: *default}
   - {name: 国外, <<: *default}
-  - {name: 国内, <<: *default}
+  # 国内组:默认直连(不走代理),保留手动切换选项
+  - name: 国内
+    type: select
+    proxies:
+      - 直连
+      - 所有-自动
+      - 所有-手动
+      - 拒绝
   - {name: 其他, <<: *default}
   # Block 组:默认拒绝,不继承 default(后者默认走代理)
   - name: Block
