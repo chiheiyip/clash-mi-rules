@@ -109,10 +109,9 @@ listeners:
     users:
       - uuid: "YOUR_REALITY_UUID_PLACEHOLDER"
         flow: xtls-rprx-vision
-    reality:
+    reality-config:
       dest: "www.apple.com:443"
       private-key: "YOUR_REALITY_PRIVATE_KEY_PLACEHOLDER"
-      public-key: "YOUR_REALITY_PUBLIC_KEY_PLACEHOLDER"
       short-id:
         - "YOUR_REALITY_SHORT_ID_PLACEHOLDER"
       server-names:
@@ -412,9 +411,11 @@ proxy-groups:
 # 规则引擎（rules）
 # ========================
 rules:
-  # 【回国服务端专用】SSH 隧道出口域名放行直连,避免 Cudy→VPS 的底层连接被再次套代理(环路)
-  # 注:此处不用 IP-CIDR,以域名匹配,后续更换 VPS 无需改此文件(VPS IP 跟随 tunnel.scut.me 解析)
+  # 【回国服务端专用】Cudy→VPS 底层 SSH 连接强制直连,避免被再次套代理(环路)
+  #   - tunnel.scut.me:SSH 隧道出口域名(换 VPS 无需改动,IP 跟随域名解析)
+  #   - VPS 公网 IP:SSH 直连目标。注:此处为写死的占位符,若更换 VPS 需同步更新此 IP
   - DOMAIN,tunnel.scut.me,直连
+  - IP-CIDR,YOUR_VPS_PUBLIC_IP_SINGLE,直连,no-resolve
   # 校园网 + 系统网络连通性检测:强制直连(避免被代理导致校园网认证/Windows 无网络误判)
   - DOMAIN-SUFFIX,scut.edu.cn,直连
   - DOMAIN,s.scut.edu.cn,直连
