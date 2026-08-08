@@ -93,29 +93,26 @@ external-controller: 0.0.0.0:9090
 secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 
 # ========================
-# 回国服务端 Listener(VLESS + Reality)
 # ========================
-# 【需要 Mihomo 内核 >= 1.18,支持 listeners + listener 固定 proxy;本配置面向 v1.19.14】
+# 回国服务端 Listener (VLESS + WebSocket + Cloudflare Tunnel)
+# ========================
 # 说明:此 listener 只在 Cudy 本机 127.0.0.1:10443 监听,不直接暴露公网。
-#       由 VPS 上的 SSH 反向隧道(127.0.0.1:24443 -> SSH -> Cudy 127.0.0.1:10443)唯一入口顶上来。
-#       Reality 在 Cudy 此处终止,解密后连接固定走 `直连` 出站 -> 从校园网 WAN 发出。
-# 注意:以下 UUID / private-key / short-id / dest / server-names 均为占位符,真实值只填在 Cudy 本地配置。
+#       TLS 由前面的 Cloudflare Tunnel 终止(tunnel.freeapp.tech:443),Cloudflare 通过
+#       cloudflared 把 WebSocket 转到 Cudy 127.0.0.1:10443 的 VLESS+WS listener。
+#       Mihomo 的 VLESS Listener 设置非空 ws-path 即启用 WebSocket;
+#       allow-insecure: true 表示本机 listener 不启用 TLS(由 Cloudflare 终止)。
+#       解密后连接固定走 `直连` 出站 -> 从校园网 WAN 发出。
+# 注意:以下 UUID 为占位符,真实值只填在 Cudy 本地配置(须与 XBoard 下发节点 UUID 一致)。
 listeners:
-  - name: vless-reality-in
+  - name: vless-ws-in
     type: vless
     listen: 127.0.0.1
     port: 10443
     proxy: 直连
     users:
-      - uuid: "YOUR_REALITY_UUID_PLACEHOLDER"
-        flow: xtls-rprx-vision
-    reality-config:
-      dest: "www.apple.com:443"
-      private-key: "YOUR_REALITY_PRIVATE_KEY_PLACEHOLDER"
-      short-id:
-        - "YOUR_REALITY_SHORT_ID_PLACEHOLDER"
-      server-names:
-        - "www.apple.com"
+      - uuid: "YOUR_VLESS_UUID_PLACEHOLDER"
+    ws-path: "/vless"
+    allow-insecure: true
 
 # ========================
 # DNS 设置
@@ -411,9 +408,6 @@ proxy-groups:
 # 规则引擎（rules）
 # ========================
 rules:
-  # 【回国服务端专用】Cudy→VPS 底层 SSH 连接强制直连,避免被再次套代理(环路)
-  #   此处只按域名放行 tunnel.scut.me(SSH 隧道出口),不写死 VPS 公网 IP——后续更换 VPS 无需改此文件(IP 跟随域名解析)
-  - DOMAIN,tunnel.scut.me,直连
   # 校园网 + 系统网络连通性检测:强制直连(避免被代理导致校园网认证/Windows 无网络误判)
   - DOMAIN-SUFFIX,scut.edu.cn,直连
   - DOMAIN,s.scut.edu.cn,直连
