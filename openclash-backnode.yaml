@@ -126,8 +126,14 @@ dns:
   ipv6: false
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-  nameserver:
+  default-nameserver:
     - 223.5.5.5
+  nameserver:
+    - '223.5.5.5#apclix0'
+  proxy-server-nameserver:
+    - '223.5.5.5#apclix0'
+  direct-nameserver:
+    - '223.5.5.5#apclix0'
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - +.lan
@@ -420,6 +426,13 @@ rules:
   - DOMAIN,www.msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftncsi.com,直连
+  # ---- 私网/内网 & 校园网基础设施:最高优先级直连 (避免内网 DNS 被代理) ----
+  - IP-CIDR,10.0.0.0/8,直连,no-resolve
+  - IP-CIDR,172.16.0.0/12,直连,no-resolve
+  - IP-CIDR,192.168.0.0/16,直连,no-resolve
+  - IP-CIDR,100.64.0.0/10,直连,no-resolve
+  - IP-CIDR,127.0.0.0/8,直连,no-resolve
+  - IP-CIDR,169.254.0.0/16,直连,no-resolve
   # ---- AI ----
 
   - RULE-SET,ChatGPT / Domain,ChatGPT
