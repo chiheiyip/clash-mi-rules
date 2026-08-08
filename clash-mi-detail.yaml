@@ -98,9 +98,14 @@ secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 # 通用跨平台 DNS 策略(不写死任何设备接口,适配手机/PC/路由器/WAN 类型不限):
 #   - 国内双 DNS 作为主解析(223.5.5.5 + 119.29.29.29),用于 nameserver / default-nameserver /
 #     proxy-server-nameserver / direct-nameserver。
-#   - 境外 DNS(tls://1.1.1.1 / tls://8.8.8.8)通过 fallback 承担“域名解析结果为中国大陆 IP →
-#     改用境外 DNS 再解析一次”的备用解析(见 fallback-filter,geoip-code: CN),以应对国内
-#     DNS 对部分境外域名解析被污染/干扰的场景。
+#   - 境外 DNS(tls://1.1.1.1 / tls://8.8.8.8)作为 fallback,配合 fallback-filter 工作:
+#     nameserver 返回 CN IP 时直接采用国内解析结果;
+#     返回非 CN IP,或命中 fallback-filter.ipcidr 的异常地址时,
+#     改用境外 DNS 的 fallback 解析结果。
+#   技术说明: geoip-code: CN 只能识别“境外域名被污染成国外/异常 IP”的情况,无法识别被
+#   污染成中国 IP 的境外域名(CN IP 恰好会被直接接受)。Mihomo 官方对需要明确境外解析的
+#   域名更推荐使用 nameserver-policy 单独指派境外 DNS;fallback-filter.geosite 已被官方标记
+#   为 deprecated,如需按域名分流请改用 nameserver-policy,而非 geosite。
 dns:
   enable: true
   listen: 0.0.0.0:7874
