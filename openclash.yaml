@@ -111,7 +111,7 @@ listeners:
     proxy: 直连
     users:
       - uuid: "YOUR_VLESS_UUID_PLACEHOLDER"
-    ws-path: "/vless"
+    ws-path: "/"
     allow-insecure: true
 
 # ========================
