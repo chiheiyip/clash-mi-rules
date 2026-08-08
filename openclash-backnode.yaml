@@ -120,6 +120,16 @@ listeners:
     ws-path: "/"
     allow-insecure: true
 
+# ========================
+# DNS 设置
+# ========================
+# 通用路由 DNS 策略(不写死任何设备接口,适配 eth/pppoe/wwan/usb/apcli 等任意 WAN):
+#   - 国内域名: 走 AliDNS(223.5.5.5) + 腾讯DNSPod(119.29.29.29) 双 DNS。
+#   - 代理节点域名(proxy-server-nameserver): 走国内双 DNS(路由器不出国,节点由机场解析最稳)。
+#   - 直连域名(direct-nameserver): 走国内双 DNS。
+#   - default-nameserver 固定用 IP,保证 bootstrap 阶段可解析。
+# 可选: 若 WAN 实际出口为某指定接口(如校园网 apcli),可用 "上游#接口" 绑定,
+# 例如 223.5.5.5#apclix0 / 119.29.29.29#apclix0,参考 README 的 SCUT/Cudy 特例说明。
 dns:
   enable: true
   listen: 0.0.0.0:7874
@@ -128,12 +138,16 @@ dns:
   fake-ip-range: 198.18.0.1/16
   default-nameserver:
     - 223.5.5.5
+    - 119.29.29.29
   nameserver:
-    - '223.5.5.5#apclix0'
+    - 223.5.5.5
+    - 119.29.29.29
   proxy-server-nameserver:
-    - '223.5.5.5#apclix0'
+    - 223.5.5.5
+    - 119.29.29.29
   direct-nameserver:
-    - '223.5.5.5#apclix0'
+    - 223.5.5.5
+    - 119.29.29.29
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - +.lan
@@ -423,7 +437,6 @@ rules:
   - DOMAIN,s.scut.edu.cn,直连
   - IP-CIDR,202.38.210.131/32,直连,no-resolve
   - DOMAIN,connect.rom.miui.com,直连
-  - DOMAIN,www.msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftncsi.com,直连
   # ---- 私网/内网 & 校园网基础设施:最高优先级直连 (避免内网 DNS 被代理) ----

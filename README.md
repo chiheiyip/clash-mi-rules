@@ -27,9 +27,32 @@ A refined, ready-to-use Clash Mi / Mihomo (Clash.Meta) routing configuration wit
 All three configs exclude the campus authentication portal and network-connectivity probes from proxying (top-priority `直连` rules):
 
 - `fake-ip-filter`: `s.scut.edu.cn`, `connect.rom.miui.com`, `+.msftconnecttest.com`, `+.msftncsi.com`
-- `rules:` top: `DOMAIN,s.scut.edu.cn`, `IP-CIDR,202.38.210.131/32`, `DOMAIN,connect.rom.miui.com`, `DOMAIN,www.msftconnecttest.com`, `DOMAIN-SUFFIX,msftconnecttest.com`, `DOMAIN-SUFFIX,msftncsi.com` → `直连`
+- `rules:` top: `DOMAIN,s.scut.edu.cn`, `IP-CIDR,202.38.210.131/32`, `DOMAIN,connect.rom.miui.com`, `DOMAIN-SUFFIX,msftconnecttest.com`, `DOMAIN-SUFFIX,msftncsi.com` → `直连`
+
+These portal/probe entries (Portal, MIUI/MSFT connectivity check) are safe to keep on any normal network — they only exclude known probe domains from proxying and do not break ordinary connectivity.
 
 Cudy/OpenClash variants additionally set top-level `ipv6: false` and `dns.ipv6: false`, and require **OpenClash UCI `router_self_proxy=0`** so the router's own `scut_portal_login.sh` and system traffic are not transparently proxied.
+
+#### Portability principle / 可移植原则
+
+The three configs never hard-code a device interface (e.g. `#apclix0`) in the DNS section, so they work across phones, PCs, routers, and any WAN type (`eth` / `pppoe` / `wwan` / `usb` / `apcli`). DNS normally uses plain IPs with Mihomo fallback / split rules.
+
+#### SCUT / Cudy overlay / 华南理工 · Cudy 特例说明
+
+`#apclix0` is **only** a SCUT/Cudy campus-Wi-Fi special case, not part of the defaults. If your device is on campus Wi-Fi and the actual campus WAN egress interface is `apclix0` (e.g. Cudy with a 4G module wired to a campus Wi-Fi AP), you can force DNS out of the campus WAN by editing the DNS upstreams to:
+
+```yaml
+# in the dns: section of any config
+nameserver:
+  - '223.5.5.5#apclix0'
+  - '119.29.29.29#apclix0'
+# do the same for default-nameserver / proxy-server-nameserver / direct-nameserver
+#   if you need the same interface binding there.
+```
+
+This small overlay is intentionally not shipped as a fourth config file to avoid long-term drift across 3–4 large configs. Apply it locally on your Cudy when deploying, or keep it as a short README note.
+
+> For `clash-mi-detail.yaml` (IPv6 enabled), the private-network direct rules include IPv6 (`::1/128`, `fc00::/7`, `fe80::/10`). The two OpenClash configs have global IPv6 off, so they keep IPv4-private direct rules only.
 
 ## Download Clash Mi / 下载 Clash Mi
 

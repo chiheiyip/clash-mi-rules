@@ -25,9 +25,31 @@
 三份配置都将校园网认证 Portal 与联网探测域名排除出代理(最高优先级 `直连` 规则):
 
 - `fake-ip-filter`: `s.scut.edu.cn`、`connect.rom.miui.com`、`+.msftconnecttest.com`、`+.msftncsi.com`
-- `rules:` 顶部: `DOMAIN,s.scut.edu.cn`、`IP-CIDR,202.38.210.131/32`、`DOMAIN,connect.rom.miui.com`、`DOMAIN,www.msftconnecttest.com`、`DOMAIN-SUFFIX,msftconnecttest.com`、`DOMAIN-SUFFIX,msftncsi.com` → `直连`
+- `rules:` 顶部: `DOMAIN,s.scut.edu.cn`、`IP-CIDR,202.38.210.131/32`、`DOMAIN,connect.rom.miui.com`、`DOMAIN-SUFFIX,msftconnecttest.com`、`DOMAIN-SUFFIX,msftncsi.com` → `直连`
+
+这些 Portal / 联网探测条目(MIUI / MSFT 连通性检测)在任何普通网络环境都安全保留——它们仅把已知探测域名排除出代理,不会破坏正常联网。
 
 Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要求 OpenClash UCI 设 `router_self_proxy=0`,避免路由器本机的 `scut_portal_login.sh` 和系统流量被透明代理。
+
+#### 可移植原则
+
+三份配置的 DNS 段一律**不写死设备接口**(如 `#apclix0`),可跨手机 / PC / 路由器以及任意 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)使用,DNS 统一用纯 IP + Mihomo 的 fallback / 分流机制。
+
+#### 华南理工 · Cudy 特例说明(overlay)
+
+`#apclix0` **仅**作为 SCUT/Cudy 校园 Wi-Fi 特例存在,不属于默认配置。如果你的设备通过校园 Wi-Fi 上网、且实际校园出口接口为 `apclix0`(例如 Cudy 通过 4G 模块接校园 Wi-Fi AP),可把 DNS 上游临时改成如下以强制 DNS 走校园 WAN:
+
+```yaml
+# 在任意配置的 dns: 段内
+nameserver:
+  - '223.5.5.5#apclix0'
+  - '119.29.29.29#apclix0'
+# 如需要,对 default-nameserver / proxy-server-nameserver / direct-nameserver 同样绑定
+```
+
+为避免日后 3~4 份大配置长期漂移,本仓库**不单独维护**第四份完整 `scut-campus.yaml`;此小型 overlay 在 Cudy 本地部署时手工套用,或仅作为说明保留。
+
+> `clash-mi-detail.yaml`(IPv6 开启)的私网直连规则含 IPv6(`::1/128`、`fc00::/7`、`fe80::/10`);两份 OpenClash 全局 IPv6 已关闭,故只保留 IPv4 私网直连。
 
 ## 下载 Clash Mi
 
