@@ -96,6 +96,9 @@ secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 # DNS 设置
 # ========================
 # 通用跨平台 DNS 策略(不写死任何设备接口,适配手机/PC/路由器/WAN 类型不限):
+#   原则: DNS 上游必须静态、明确、无 DHCP 递归 —— 禁止在 nameserver / default-nameserver /
+#   proxy-server-nameserver / direct-nameserver 中出现 dhcp://、dhcp://apclix0、system、
+#   校园网网关 DNS 或其它由 WAN DHCP 动态取得的 DNS,只使用确定的公网 DNS。
 #   - 国内双 DNS 作为主解析(223.5.5.5 + 119.29.29.29),用于 nameserver / default-nameserver /
 #     proxy-server-nameserver / direct-nameserver。
 #   - 境外 DNS(tls://1.1.1.1 / tls://8.8.8.8)作为 fallback,配合 fallback-filter 工作:

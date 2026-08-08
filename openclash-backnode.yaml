@@ -124,12 +124,20 @@ listeners:
 # DNS 设置
 # ========================
 # 通用路由 DNS 策略(不写死任何设备接口,适配 eth/pppoe/wwan/usb/apcli 等任意 WAN):
+#   原则: DNS 上游必须静态、明确、无 DHCP 递归 —— 禁止在 nameserver / default-nameserver /
+#   proxy-server-nameserver / direct-nameserver 中出现 dhcp://、dhcp://<wan-interface>、system、
+#   校园网网关 DNS 或其它由 WAN DHCP 动态取得的 DNS,只使用确定的公网 DNS;respect-rules 不启用。
 #   - 国内域名: 走 AliDNS(223.5.5.5) + 腾讯DNSPod(119.29.29.29) 双 DNS。
 #   - 代理节点域名(proxy-server-nameserver): 走国内双 DNS(路由器不出国,节点由机场解析最稳)。
 #   - 直连域名(direct-nameserver): 走国内双 DNS。
 #   - default-nameserver 固定用 IP,保证 bootstrap 阶段可解析。
+# 注意: OpenClash 启动阶段会自动获取并追加 WAN/DHCP DNS,可能把 static DNS 重新注入运行配置。
+# 若 /etc/openclash/openclash.yaml 运行后仍出现 dhcp://... 追加,请在 OpenClash 设置中关闭
+# ‘DNS 覆写 / 追加 WAN DNS’,否则继续造成 7874 查询堆积 / DNS 超时 / 高 CPU。
 # 可选: 若 WAN 实际出口为某指定接口(如校园网 apcli),可用 "上游#接口" 绑定,
 # 例如 223.5.5.5#apclix0 / 119.29.29.29#apclix0,参考 README 的 SCUT/Cudy 特例说明。
+#   仅当你需要强制 DNS 从一个指定上行接口发出时,才把上游写成 "IP#接口" 形式
+#   (如 223.5.5.5#apclix0);默认不写接口,以保持配置可移植。
 dns:
   enable: true
   listen: 0.0.0.0:7874

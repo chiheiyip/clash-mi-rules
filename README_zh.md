@@ -35,9 +35,17 @@ Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要
 
 三份配置的 DNS 段一律**不写死设备接口**(如 `#apclix0`),可跨手机 / PC / 路由器以及任意 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)使用,DNS 统一用纯 IP + Mihomo 的 fallback / 分流机制。
 
-#### 华南理工 · Cudy 特例说明(overlay)
+#### 静态 DNS · 无 DHCP 递归
 
-`#apclix0` **仅**作为 SCUT/Cudy 校园 Wi-Fi 特例存在,不属于默认配置。如果你的设备通过校园 Wi-Fi 上网、且实际校园出口接口为 `apclix0`(例如 Cudy 通过 4G 模块接校园 Wi-Fi AP),可把 DNS 上游临时改成如下以强制 DNS 走校园 WAN:
+三份配置的 DNS 上游一律**静态、明确、无 DHCP 递归**:`nameserver`、`default-nameserver`、`proxy-server-nameserver`、`direct-nameserver` 只使用固定的公网 DNS(`223.5.5.5` + `119.29.29.29`;`clash-mi-detail.yaml` 另以 `tls://1.1.1.1` / `tls://8.8.8.8` 作为 `fallback`)。不要填入 `dhcp://`、`dhcp://apclix0`、`system`、校园网网关 DNS 或任何由 WAN DHCP 动态取得的 DNS——这些会形成 DNS 上游循环,导致 7874 查询堆积、DNS 超时与高 CPU。`respect-rules` 保持不启用。
+
+> **OpenClash 运行时注意**:若源 YAML 已无 `dhcp://apclix0`,但 `/etc/openclash/openclash.yaml` 启动后仍自动出现 `dhcp://"apclix0"`(或其它 WAN DNS),那是 **OpenClash 自身启动阶段自动追加 WAN/DHCP DNS**,不是仓库 YAML 能解决的问题。请在 OpenClash 设置中关闭 “DNS 覆写 / 追加 WAN DNS ”,否则循环会在运行时被重新注入。
+
+#### 华南理工 · Cudy 接口绑定说明
+
+本仓库的三份配置**就是** Cudy / SCUT 本地部署配置(公开仓库版本与 Cudy 本地部署是同一个东西,并非两套)。DNS 上游统一写成纯公网 IP,以保持对路由器实际所用 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)的可移植性。
+
+当部署在 Cudy 上、且实际校园 WAN 出口确实为 `apclix0` 接口时(例如 4G 模块接校园 Wi-Fi AP),可把 DNS 上游绑定到该接口以强制 DNS 走校园 WAN:
 
 ```yaml
 # 在任意配置的 dns: 段内
@@ -47,7 +55,7 @@ nameserver:
 # 如需要,对 default-nameserver / proxy-server-nameserver / direct-nameserver 同样绑定
 ```
 
-为避免日后 3~4 份大配置长期漂移,本仓库**不单独维护**第四份完整 `scut-campus.yaml`;此小型 overlay 在 Cudy 本地部署时手工套用,或仅作为说明保留。
+为避免日后 3~4 份大配置长期漂移,本仓库**不单独维护**第四份完整 `scut-campus.yaml`;接口绑定按需手工套用即可。
 
 > `clash-mi-detail.yaml`(IPv6 开启)的私网直连规则含 IPv6(`::1/128`、`fc00::/7`、`fe80::/10`);两份 OpenClash 全局 IPv6 已关闭,故只保留 IPv4 私网直连。
 

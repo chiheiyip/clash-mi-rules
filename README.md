@@ -37,9 +37,19 @@ Cudy/OpenClash variants additionally set top-level `ipv6: false` and `dns.ipv6: 
 
 The three configs never hard-code a device interface (e.g. `#apclix0`) in the DNS section, so they work across phones, PCs, routers, and any WAN type (`eth` / `pppoe` / `wwan` / `usb` / `apcli`). DNS normally uses plain IPs with Mihomo fallback / split rules.
 
-#### SCUT / Cudy overlay / 华南理工 · Cudy 特例说明
+#### Static DNS / no DHCP recursion / 静态 DNS · 无 DHCP 递归
 
-`#apclix0` is **only** a SCUT/Cudy campus-Wi-Fi special case, not part of the defaults. If your device is on campus Wi-Fi and the actual campus WAN egress interface is `apclix0` (e.g. Cudy with a 4G module wired to a campus Wi-Fi AP), you can force DNS out of the campus WAN by editing the DNS upstreams to:
+All three configs keep the DNS upstream **static, explicit and DHCP-recursion-free**: `nameserver`, `default-nameserver`, `proxy-server-nameserver` and `direct-nameserver` use only fixed public DNS (`223.5.5.5` + `119.29.29.29`; `clash-mi-detail.yaml` also adds `tls://1.1.1.1` / `tls://8.8.8.8` as `fallback`). Never insert `dhcp://`, `dhcp://apclix0`, `system`, the campus-gateway DNS, or any DNS dynamically obtained from WAN DHCP — those create a DNS upstream loop and cause `7874` query pile-up, timeouts and high CPU.
+
+`respect-rules` is intentionally left off / unconfigured.
+
+> **OpenClash runtime gotcha:** if `/etc/openclash/openclash.yaml` still shows `dhcp://"apclix0"` (or other WAN DNS) after startup even though the source YAML has none, that is OpenClash itself appending WAN/DHCP DNS during its startup phase. Fix it in **OpenClash settings → disable “DNS override / append WAN DNS”**, not in the source YAML — otherwise the loop keeps being re-injected at runtime.
+
+#### SCUT / Cudy interface binding / 接口绑定说明
+
+This repository is the SCUT/Cudy deployment itself — the three configs **are** the Cudy/SCUT local-deployment configs, not a separate “local” variant. The DNS upstreams are left as bare public IPs so they stay portable across the WAN type the router actually uses (`eth` / `pppoe` / `wwan` / `usb` / `apcli`).
+
+When you deploy on a Cudy whose campus Wi-Fi WAN egress really is the `apclix0` interface (e.g. a 4G module wired to a campus Wi-Fi AP), you can force DNS out of the campus WAN by binding the upstreams to that interface:
 
 ```yaml
 # in the dns: section of any config
