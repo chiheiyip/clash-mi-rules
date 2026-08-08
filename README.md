@@ -18,7 +18,18 @@ A refined, ready-to-use Clash Mi / Mihomo (Clash.Meta) routing configuration wit
 
 | File | Description |
 |------|-------------|
-| `clash-mi-detail.yaml` | The refined configuration (main file) |
+| `clash-mi-detail.yaml` | General config for any ClashMi/Mihomo client (mobile/desktop). Includes SCUT campus-network protection. |
+| `openclash.yaml` | **Cudy daily-use** config (no exit-node). Based on `clash-mi-detail.yaml` + IPv6 off + `router_self_proxy=0`. |
+| `openclash-backnode.yaml` | **Cudy exit-node** config. `openclash.yaml` + VLESS WebSocket listener on `127.0.0.1:10443` (for Cloudflare Tunnel / campus exit). |
+
+### SCUT campus-network protection / 华南理工校园网适配
+
+All three configs exclude the campus authentication portal and network-connectivity probes from proxying (top-priority `直连` rules):
+
+- `fake-ip-filter`: `s.scut.edu.cn`, `connect.rom.miui.com`, `+.msftconnecttest.com`, `+.msftncsi.com`
+- `rules:` top: `DOMAIN,s.scut.edu.cn`, `IP-CIDR,202.38.210.131/32`, `DOMAIN,connect.rom.miui.com`, `DOMAIN,www.msftconnecttest.com`, `DOMAIN-SUFFIX,msftconnecttest.com`, `DOMAIN-SUFFIX,msftncsi.com` → `直连`
+
+Cudy/OpenClash variants additionally set top-level `ipv6: false` and `dns.ipv6: false`, and require **OpenClash UCI `router_self_proxy=0`** so the router's own `scut_portal_login.sh` and system traffic are not transparently proxied.
 
 ## Download Clash Mi / 下载 Clash Mi
 
@@ -36,10 +47,17 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 
 ## Quick Start / 快速开始
 
+### General client (Clash Mi / Mihomo)
+
 1. Open `clash-mi-detail.yaml`.
 2. In `proxy-providers`, replace `url: "机场订阅地址"` with your real airport (provider) subscription URL, and rename `机场名称`.
 3. (Optional) Change `secret` (placeholder) to your own strong password if you care.
 4. Import the file into Clash Mi (or any Mihomo client) as a config / override subscription.
+
+### Cudy / OpenClash (campus exit node)
+
+1. **Daily use (no exit-node):** import `openclash.yaml`. Set OpenClash UCI `router_self_proxy=0`, both `ipv6` flags already `false`.
+2. **Campus exit-node (Cloudflare Tunnel → VLESS/WS):** import `openclash-backnode.yaml`. Replace the `YOUR_VLESS_UUID_PLACEHOLDER` UUID with the real UUID issued to ClashMi by XBoard, then point Cloudflare Tunnel public host `tunnel.freeapp.tech` → HTTP → `127.0.0.1:10443` (path left empty). Client node: VLESS, host `tunnel.freeapp.tech:443`, transport WebSocket, path `/`, TLS on, SNI/Host `tunnel.freeapp.tech`, Flow empty, Reality off.
 
 ## Group Layout / 分组结构
 

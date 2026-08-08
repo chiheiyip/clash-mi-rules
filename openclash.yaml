@@ -92,27 +92,8 @@ external-controller: 0.0.0.0:9090
 # 控制接口密码:请改为足够复杂的自定义密码(不要用 123456)
 secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 
-# ========================
-# ========================
-# 回国服务端 Listener (VLESS + WebSocket + Cloudflare Tunnel)
-# ========================
-# 说明:此 listener 只在 Cudy 本机 127.0.0.1:10443 监听,不直接暴露公网。
-#       TLS 由前面的 Cloudflare Tunnel 终止(tunnel.freeapp.tech:443),Cloudflare 通过
-#       cloudflared 把 WebSocket 转到 Cudy 127.0.0.1:10443 的 VLESS+WS listener。
-#       Mihomo 的 VLESS Listener 设置非空 ws-path 即启用 WebSocket;
-#       allow-insecure: true 表示本机 listener 不启用 TLS(由 Cloudflare 终止)。
-#       解密后连接固定走 `直连` 出站 -> 从校园网 WAN 发出。
-# 注意:以下 UUID 为占位符,真实值只填在 Cudy 本地配置(须与 XBoard 下发节点 UUID 一致)。
-listeners:
-  - name: vless-ws-in
-    type: vless
-    listen: 127.0.0.1
-    port: 10443
-    proxy: 直连
-    users:
-      - uuid: "YOUR_VLESS_UUID_PLACEHOLDER"
-    ws-path: "/"
-    allow-insecure: true
+# OpenClash 必设: 管理页 配置->DNS/运行 或 UCI 设置 router_self_proxy=0,
+# 避免路由器本机的 scut_portal_login.sh / 联网检测 / 系统流量被透明代理。
 
 # ========================
 # DNS 设置
@@ -120,7 +101,7 @@ listeners:
 dns:
   enable: true
   listen: 0.0.0.0:7874
-  ipv6: true
+  ipv6: false
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   nameserver:
@@ -130,10 +111,12 @@ dns:
     - +.lan
     - +.local
     - geosite:cn
+    - s.scut.edu.cn
+    - connect.rom.miui.com
     - +.msftconnecttest.com
     - +.msftncsi.com
 
-ipv6: true
+ipv6: false
 
 # ========================
 # TUN 模块
@@ -408,12 +391,15 @@ proxy-groups:
 # 规则引擎（rules）
 # ========================
 rules:
-  # 校园网 + 系统网络连通性检测:强制直连(避免被代理导致校园网认证/Windows 无网络误判)
-  - DOMAIN-SUFFIX,scut.edu.cn,直连
+  # ---- 华南理工校园网认证 & 联网检测:最高优先级直连 (Portal/探测不代理) ----
   - DOMAIN,s.scut.edu.cn,直连
+  - IP-CIDR,202.38.210.131/32,直连,no-resolve
+  - DOMAIN,connect.rom.miui.com,直连
+  - DOMAIN,www.msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftconnecttest.com,直连
   - DOMAIN-SUFFIX,msftncsi.com,直连
   # ---- AI ----
+
   - RULE-SET,ChatGPT / Domain,ChatGPT
   - RULE-SET,Claude / Domain,Claude
   - RULE-SET,Gemini / Domain,Gemini

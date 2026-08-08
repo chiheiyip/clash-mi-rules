@@ -16,7 +16,18 @@
 
 | 文件 | 说明 |
 |------|------|
-| `clash-mi-detail.yaml` | 细化分流配置(主文件) |
+| `clash-mi-detail.yaml` | 通用配置(手机/电脑等任意 ClashMi/Mihomo 客户端),含华南理工校园网保护 |
+| `openclash.yaml` | **Cudy 日常使用**(不承担校园网出口节点)。基于 `clash-mi-detail.yaml` + 关闭 IPv6 + `router_self_proxy=0` |
+| `openclash-backnode.yaml` | **Cudy 校园网出口节点**。即 `openclash.yaml` + 监听 `127.0.0.1:10443` 的 VLESS WebSocket listener(配合 Cloudflare Tunnel) |
+
+### 华南理工校园网适配(三份均含)
+
+三份配置都将校园网认证 Portal 与联网探测域名排除出代理(最高优先级 `直连` 规则):
+
+- `fake-ip-filter`: `s.scut.edu.cn`、`connect.rom.miui.com`、`+.msftconnecttest.com`、`+.msftncsi.com`
+- `rules:` 顶部: `DOMAIN,s.scut.edu.cn`、`IP-CIDR,202.38.210.131/32`、`DOMAIN,connect.rom.miui.com`、`DOMAIN,www.msftconnecttest.com`、`DOMAIN-SUFFIX,msftconnecttest.com`、`DOMAIN-SUFFIX,msftncsi.com` → `直连`
+
+Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要求 OpenClash UCI 设 `router_self_proxy=0`,避免路由器本机的 `scut_portal_login.sh` 和系统流量被透明代理。
 
 ## 下载 Clash Mi
 
@@ -34,10 +45,17 @@
 
 ## 快速开始
 
+### 通用客户端(Clash Mi / Mihomo)
+
 1. 打开 `clash-mi-detail.yaml`。
 2. 在 `proxy-providers` 里,把 `url: "机场订阅地址"` 换成你机场的真实订阅链接,并把 `机场名称` 改成你机场的名字。
 3. (可选)如果你介意默认的 `secret`(占位符),改成你自己的强密码。
 4. 将该文件作为配置 / 订阅导入 Clash Mi(或其他 Mihomo 客户端)。
+
+### Cudy / OpenClash(校园网出口节点)
+
+1. **日常使用(无出口节点):**导入 `openclash.yaml`。在 OpenClash 设置 `router_self_proxy=0`;两个 `ipv6` 已默认 `false`。
+2. **校园网出口节点(Cloudflare Tunnel → VLESS/WS):**导入 `openclash-backnode.yaml`,把 `YOUR_VLESS_UUID_PLACEHOLDER` 换成 XBoard 实际下发给 ClashMi 的真实 UUID,Cloudflare Tunnel 公开域名 `tunnel.freeapp.tech` → HTTP → `127.0.0.1:10443`(路径留空)。客户端节点:VLESS、连接 `tunnel.freeapp.tech:443`、传输 WebSocket、路径 `/`、TLS 开启、SNI/Host `tunnel.freeapp.tech`、Flow 空、Reality 关闭。
 
 ## 分组结构
 
