@@ -96,12 +96,11 @@ secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 # DNS 设置
 # ========================
 # 通用跨平台 DNS 策略(不写死任何设备接口,适配手机/PC/路由器/WAN 类型不限):
-#   - 国内域名: 走 AliDNS(223.5.5.5) + 腾讯DNSPod(119.29.29.29) 双 DNS,加快国内解析。
-#   - 境外域名(proxy-server-nameserver): 走 1.1.1.1 / 8.8.8.8,配合 proxy-server-fallback
-#     在境外公共 DNS 不可达时自动回退国内双 DNS,避免代理节点域名解析中断。
-#   - 直连域名(direct-nameserver): 走国内双 DNS,兼顾速度与命中率。
-# 可选: 若本机某些接口(如 AP 的 eth/pppoe/wwan/apcli)解析仅能走某个上行设备,DNS
-# 支持 "上游#接口" 语法进行绑定,参考文件末尾 README 的 SCUT/Cudy 特例说明。
+#   - 国内双 DNS 作为主解析(223.5.5.5 + 119.29.29.29),用于 nameserver / default-nameserver /
+#     proxy-server-nameserver / direct-nameserver。
+#   - 境外 DNS(tls://1.1.1.1 / tls://8.8.8.8)通过 fallback 承担“域名解析结果为中国大陆 IP →
+#     改用境外 DNS 再解析一次”的备用解析(见 fallback-filter,geoip-code: CN),以应对国内
+#     DNS 对部分境外域名解析被污染/干扰的场景。
 dns:
   enable: true
   listen: 0.0.0.0:7874
@@ -110,18 +109,24 @@ dns:
   fake-ip-range: 198.18.0.1/16
   default-nameserver:
     - 223.5.5.5
+    - 119.29.29.29
   nameserver:
     - 223.5.5.5
     - 119.29.29.29
   proxy-server-nameserver:
-    - 1.1.1.1
-    - 8.8.8.8
-  proxy-server-fallback:
     - 223.5.5.5
     - 119.29.29.29
   direct-nameserver:
     - 223.5.5.5
     - 119.29.29.29
+  fallback:
+    - tls://1.1.1.1
+    - tls://8.8.8.8
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
     - +.lan
