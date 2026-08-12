@@ -139,6 +139,40 @@ All providers are fetched via `gh-proxy.com` (China GitHub mirror) from:
 - `secret` is the API controller secret (currently a placeholder); change it to your own strong password if your instance is reachable externally.
 - Rule-set URLs may occasionally be rate-limited by `gh-proxy.com` (403). Retry or reload to resolve.
 
+## Development / 开发运维 (CI & Releases)
+
+Every change to the configs is verified automatically so a broken edit is caught at merge time, not on deployment day.
+
+### CI (`.github/workflows/ci.yml`)
+
+Runs on every `push`/`PR` touching the configs or scripts, and on a **nightly schedule** (03:17 UTC) to catch a silently-broken rule mirror:
+
+| Check | What it does |
+|-------|--------------|
+| YAML + consistency | `scripts/validate.py` — parse every `*.yaml`, verify required top-level keys, DNS recursion guard (no `dhcp://`/`system`/`apclix0` in live config), portability guard (no hard-coded `IP#interface` binding in live code), rule-provider URL sanity |
+| Mihomo config test | `scripts/mihomo_test.sh` — fetches the official `mihomo` binary, substitutes the airport-subscription placeholder + a safe secret on a **copy**, runs `mihomo -t` on each config |
+| Rule URL availability | `scripts/check_rules.py` — concurrently HEAD/GET every `rule-provider` URL + the health probe `gstatic.com/generate_204` |
+
+### Release (`.github/workflows/release.yml`)
+
+Tag-based, versioned releases so a specific config set can be pinned and rolled back to:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+A GitHub Release is created with a `clash-mi-rules-<version>.tar.gz` bundle (the three configs, READMEs, scripts) plus a `MANIFEST.txt` with a SHA-256 per file. CI validation gates every release.
+
+### Run the checks locally
+
+```bash
+pip install pyyaml
+python3 scripts/validate.py          # offline structural checks
+python3 scripts/check_rules.py      # online rule-URL availability
+bash scripts/mihomo_test.sh --bin ./bin/mihomo   # needs a mihomo binary
+```
+
 ## License / 许可
 
 MIT

@@ -1,0 +1,86 @@
+name: Release
+
+# Builds a versioned, consumable release bundle on tag push.
+# Create a tag with e.g.:
+#   git tag v0.1.0 && git push origin v0.1.0
+# A matching GitHub Release is created with the full config set + a manifest,
+# so a specific version can be pinned/rolled back to (the gap this fixes).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: ver
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          echo "version=$tag" >> "$GITHUB_OUTPUT"
+          echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+
+      # Validate exactly what CI validates before shipping a release.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml
+      - name: Offline validation gate
+        run: python3 scripts/validate.py
+
+      - name: Build release archive
+        run: |
+          set -euxo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          STAGE="$(mktemp -d)"
+          PKG="clash-mi-rules-${VERSION}"
+          DEST="$STAGE/$PKG"
+          mkdir -p "$DEST"
+          cp clash-mi-detail.yaml openclash.yaml openclash-backnode.yaml "$DEST/"
+          cp README.md README_zh.md "$DEST/"
+          cp -r scripts "$DEST/scripts"
+          # generate a manifest so a release is self-describing and diffable
+          {
+            echo "# clash-mi-rules manifest (v${VERSION})"
+            echo "generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "commit: $GITHUB_SHA"
+            echo ""
+            echo "## SHA-256"
+            sha256sum \
+              "$DEST"/clash-mi-detail.yaml \
+              "$DEST"/openclash.yaml \
+              "$DEST"/openclash-backnode.yaml
+          } > "$DEST/MANIFEST.txt"
+          tar -C "$STAGE" -czf "$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz" "$PKG"
+          sha256sum "$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz" > "$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz.sha256"
+          echo "archive=$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+          echo "checksum=$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz.sha256" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: clash-mi-rules ${{ github.ref_name }}
+          body: |
+            ## clash-mi-rules ${{ steps.ver.outputs.tag }}
+
+            Bundle of the three configs (`clash-mi-detail.yaml`, `openclash.yaml`,
+            `openclash-backnode.yaml`), READMEs, validation scripts and a manifest.
+
+            All checks in the CI workflow must pass (YAML parse + Mihomo config
+            test + rule-source URL availability). See `MANIFEST.txt` for per-file
+            SHA-256 hashes.
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.archive }}
+            ${{ env.checksum }}

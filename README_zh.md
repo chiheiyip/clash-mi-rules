@@ -134,6 +134,40 @@ MATCH,其他                        # 其余全部 → 其他
 - `secret` 是 API 控制器密钥(当前为占位符);若你的实例可被外部访问,务必改成你自己的强密码。
 - `gh-proxy.com` 偶发限流(返回 403),重试或重新加载即可。
 
+## 开发运维(CI 与发布)
+
+每次改动配置都会被自动验证,坏改动在合并时就被拦截,而不是等到部署当天才翻车。
+
+### CI(`.github/workflows/ci.yml`)
+
+在每次触及配置/脚本的 `push` / `PR`,以及**每天定时**(UTC 03:17)运行,用于提前发现静默失效的规则镜像源:
+
+| 检查 | 作用 |
+|------|------|
+| YAML + 一致性 | `scripts/validate.py` —— 解析每个 `*.yaml`,校验必需顶层键、DNS 递归防护(实时配置中不允许 `dhcp://`/`system`/`apclix0`)、可移植性防护(实时代码中不允许写死 `IP#接口`)、rule-provider URL 合法性 |
+| Mihomo 配置测试 | `scripts/mihomo_test.sh` —— 拉取官方 `mihomo` 二进制,在**副本**上把机场订阅占位符和安全密钥替换后,对每个配置跑 `mihomo -t` |
+| 规则 URL 可用性 | `scripts/check_rules.py` —— 并发 HEAD/GET 每个 `rule-provider` URL 及健康探测地址 `gstatic.com/generate_204` |
+
+### 发布(`.github/workflows/release.yml`)
+
+打标签即可产出带版本的发布包,方便固定/回滚到某个具体配置版本:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(三份配置 + README + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。每个发布都先过一遍 CI 校验门槛。
+
+### 本地跑校验
+
+```bash
+pip install pyyaml
+python3 scripts/validate.py          # 离线结构检查
+python3 scripts/check_rules.py      # 在线规则 URL 可用性
+bash scripts/mihomo_test.sh --bin ./bin/mihomo   # 需一个 mihomo 二进制
+```
+
 ## 许可
 
 MIT

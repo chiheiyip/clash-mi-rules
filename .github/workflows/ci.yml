@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - '*.yaml'
+      - 'scripts/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '*.yaml'
+      - 'scripts/**'
+      - '.github/workflows/ci.yml'
+  schedule:
+    # nightly rule-source availability check so a silently-broken mirror
+    # (e.g. gh-proxy.com outage) surfaces even without a code change.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: YAML + consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Offline validation (parse + structure + portability)
+        run: python3 scripts/validate.py
+
+  mihomo-test:
+    name: Mihomo config test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch mihomo binary
+        run: |
+          # pinned-ish latest stable from the official Alpha/Beta/stable release
+          set -eux
+          mkdir -p bin
+          curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64-v1.18.10.gz" \
+            -o bin/mihomo.gz || \
+          curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64.gz" \
+            -o bin/mihomo.gz
+          gunzip -f bin/mihomo.gz
+          chmod +x bin/mihomo
+          ./bin/mihomo -v
+      - name: Kernel config test on sanitized copies
+        run: bash scripts/mihomo_test.sh --bin "$PWD/bin/mihomo"
+
+  rules-check:
+    name: Rule URL availability
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Check all rule-provider + health URLs
+        run: python3 scripts/check_rules.py
