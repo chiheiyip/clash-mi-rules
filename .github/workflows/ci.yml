@@ -39,14 +39,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Fetch mihomo binary
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # pinned-ish latest stable from the official Alpha/Beta/stable release
           set -eux
           mkdir -p bin
-          curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64-v1.18.10.gz" \
-            -o bin/mihomo.gz || \
-          curl -fsSL "https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64.gz" \
-            -o bin/mihomo.gz
+          ASSET_URL="$(curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest \
+            | jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-v[0-9]+\\.[0-9]+\\.[0-9]+\\.gz$")) | .browser_download_url' \
+            | head -n1)"
+          test -n "$ASSET_URL"
+          curl -fsSL "$ASSET_URL" -o bin/mihomo.gz
           gunzip -f bin/mihomo.gz
           chmod +x bin/mihomo
           ./bin/mihomo -v

@@ -45,7 +45,13 @@ jobs:
           PKG="clash-mi-rules-${VERSION}"
           DEST="$STAGE/$PKG"
           mkdir -p "$DEST"
-          cp clash-mi-detail.yaml openclash.yaml openclash-backnode.yaml "$DEST/"
+          cp \
+            clash-mi-detail.yaml \
+            clash-mi-detail-sslvpn.yaml \
+            openclash.yaml \
+            openclash-sslvpn.yaml \
+            openclash-backnode.yaml \
+            "$DEST/"
           cp README.md README_zh.md "$DEST/"
           cp -r scripts "$DEST/scripts"
           # generate a manifest so a release is self-describing and diffable
@@ -57,7 +63,9 @@ jobs:
             echo "## SHA-256"
             sha256sum \
               "$DEST"/clash-mi-detail.yaml \
+              "$DEST"/clash-mi-detail-sslvpn.yaml \
               "$DEST"/openclash.yaml \
+              "$DEST"/openclash-sslvpn.yaml \
               "$DEST"/openclash-backnode.yaml
           } > "$DEST/MANIFEST.txt"
           tar -C "$STAGE" -czf "$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz" "$PKG"
@@ -73,8 +81,8 @@ jobs:
           body: |
             ## clash-mi-rules ${{ steps.ver.outputs.tag }}
 
-            Bundle of the three configs (`clash-mi-detail.yaml`, `openclash.yaml`,
-            `openclash-backnode.yaml`), READMEs, validation scripts and a manifest.
+            Bundle of the five configs (base, SSLVPN and campus exit-node variants),
+            READMEs, validation scripts and a manifest.
 
             All checks in the CI workflow must pass (YAML parse + Mihomo config
             test + rule-source URL availability). See `MANIFEST.txt` for per-file

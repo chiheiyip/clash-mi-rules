@@ -1,21 +1,15 @@
-#!/usr/bin/env python3
-"""clash-mi-rules Mihomo config-test harness.
-
-The shipped configs contain deployment placeholders (`机场A订阅地址`,
-`CHANGE_ME_...`) that a *real* `mihomo -t` would reject. This harness:
-
-  1. Copies each config to a temp working dir.
-  2. Substitutes the airport-subscription placeholder with a valid ephemeral
-     direct-URL provider and a random safe secret, so the kernel parser can
-     load the full structure.
-  3. Runs `mihomo -t -f <sanitized>` and reports per-file result.
-
-Usage:
-    scripts/mihomo_test.sh [--bin /path/to/mihomo] [config.yaml ...]
-
-Requires a `mihomo` binary (fetched by CI from GitHub Releases). If an
-executable named `mihomo` is on PATH it is used; otherwise pass `--bin`.
-"""
+#!/usr/bin/env bash
+# clash-mi-rules Mihomo config-test harness.
+#
+# The shipped configs contain deployment placeholders (airport URLs and the
+# controller secret) that a real `mihomo -t` would reject. This harness copies
+# each config, replaces those placeholders, and tests the sanitized copy.
+#
+# Usage:
+#   scripts/mihomo_test.sh [--bin /path/to/mihomo] [config.yaml ...]
+#
+# Requires a mihomo binary. CI fetches one from the official GitHub release;
+# locally, put `mihomo` on PATH or pass --bin.
 set -euo pipefail
 
 BIN="${MIHOMO_BIN:-}"
@@ -45,6 +39,23 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
+# fake-ip-filter contains `geosite:cn`; provide the official database up front
+# so config testing does not depend on mihomo's own DNS/bootstrap path.
+if [[ -n "${GEOSITE_DAT:-}" ]]; then
+  cp "$GEOSITE_DAT" "$TMP/GeoSite.dat"
+else
+  curl -fsSL \
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" \
+    -o "$TMP/GeoSite.dat"
+fi
+if [[ -n "${GEOIP_DAT:-}" ]]; then
+  cp "$GEOIP_DAT" "$TMP/GeoIP.metadb"
+else
+  curl -fsSL \
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" \
+    -o "$TMP/GeoIP.metadb"
+fi
+
 fail=0
 ran=0
 for src in "${EXTRA[@]}"; do
@@ -64,11 +75,12 @@ open(out, "w", encoding="utf-8").write(txt)
 PY
   ran=$((ran+1))
   echo "=== mihomo -t : $base ==="
-  if "$BIN" -t -f "$out" >/tmp/mihomo_test.out 2>&1; then
+  log="$TMP/${base}.log"
+  if "$BIN" -t -d "$TMP" -f "$out" >"$log" 2>&1; then
     echo "[ok    ] $base"
   else
     echo "[BAD   ] $base"
-    cat /tmp/mihomo_test.out
+    cat "$log"
     fail=1
   fi
 done

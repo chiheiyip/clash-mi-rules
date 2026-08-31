@@ -1,0 +1,712 @@
+# ========================
+# Clash-Mi 细化分流配置 + SCUT EasyConnect
+# ========================
+# 策略:url-test(自动测速) + fallback(故障转移),兼容 Clash Mi 内嵌 mihomo 内核。
+#
+# 分组结构:
+#   AI:ChatGPT / Claude / Gemini / Grok / 其他AI(Meta AI、Copilot、Perplexity、Groq 等)
+#   独立站点:GitHub / LinuxDo
+#   社交:X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
+#   流媒体:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Amazon、Crunchyroll、Popcorn 等)
+#   云与系统:Google / Microsoft / Apple / Nvidia / Cloud(Adobe 等)
+#   游戏:Games(Steam、Epic、EA、Blizzard、UBI、PlayStation、Nintendo 等)
+#   Crypto:Crypto(OKX、Bybit、Binance、Kraken、Bybit EU、Ether.fi、Trading 212、Monese、Myfin、Altery)
+#   兜底:Test / 国外 / 国内 / 其他 / Block
+#   地区组:所有-手动/自动,以及 香港/台湾/日本/新加坡/韩国/美国/英国/德国/其他(每组 手动+自动+故转)
+#
+# 规则来源:meta-rules-dat(.mrs) + blackmatrix7(.list),全部 URL 已验证可拉取。
+# 机场订阅:把 proxy-providers 里的 机场订阅地址 换成你的真实订阅 URL。
+# 本文件基于 clash-mi-detail.yaml,仅增加本机 EasyConnect SOCKS5 与校园资源分流。
+# ========================
+
+# 机场节点订阅
+# 支持多机场:每个机场一个 provider 块,分别填入各自的订阅地址。
+proxy-providers:
+
+  # 机场A
+  机场名称1:
+    url: "机场A订阅地址"
+    type: http
+    interval: 86400
+    health-check:
+      enable: true
+      url: http://www.gstatic.com/generate_204
+      interval: 300
+    proxy: 直连
+
+  # 机场B(不需要可删除本块)
+  机场名称2:
+    url: "机场B订阅地址"
+    type: http
+    interval: 86400
+    health-check:
+      enable: true
+      url: http://www.gstatic.com/generate_204
+      interval: 300
+    proxy: 直连
+
+proxies:
+  - {name: 直连, type: direct}
+  - {name: 拒绝, type: reject}
+  # EasyConnect 容器须在宿主机发布 127.0.0.1:1080；ARM GUI/noVNC 部署不属于本 YAML。
+  - {name: SCUT-EasyConnect, type: socks5, server: 127.0.0.1, port: 1080, udp: false}
+
+
+# ========================
+# 链式代理说明(socks5 / dialer-proxy)
+# ========================
+# 什么是链式代理?
+#   让流量先走 A 节点、再由 A 转发到 B 节点 (两步跳),
+#   适合“中转 + 落地分离”的机场玩法。
+#
+# dialer-proxy 是什么?
+#   = 前置代理 / 链路的上游那一段。
+#   例: dialer-proxy: 香港-自动
+#      = 流量先连“香港-自动”(第一步),再由它去访问落地节点(第二步)。
+#   值通常填一个地区组(香港-自动 / 美国-自动等)或某个具体节点名。
+#
+# 日常使用:绝大多数人用不到链式代理，保持整段注释即可,不影响任何功能。
+# 需要启用时:去掉行首的 # (即取消注释),填好 server/port 等,并设置 dialer-proxy。
+#
+# 以下为 链式代理 socks5 节点,如果要启用,请去掉前面的 #
+#  - name: 链式落地节点名称        # 这段链路的名字(自己起,如“中转-落地”)
+#    type: socks5                 # 协议固定 socks5
+#    server:                       # 落地节点域名或 IP
+#    port:                         # 落地节点端口
+#    username:                     # (可选)认证用户名,没有就留空
+#    password:                     # (可选)认证密码,没有就留空
+#    udp: true                     # 是否允许 UDP(游戏/通话建议 true)
+#    dialer-proxy: 香港-自动       # 前置代理:先走“香港-自动”,再到上面的落地节点
+
+# ========================
+# 主要端口设置
+# ========================
+port: 7890
+socks-port: 7891
+mixed-port: 7893
+redir-port: 7892
+tproxy-port: 7895
+
+allow-lan: true
+mode: rule
+log-level: info
+
+external-controller: 0.0.0.0:9090
+# 控制接口密码:请改为足够复杂的自定义密码(不要用 123456)
+secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
+
+# ========================
+# DNS 设置
+# ========================
+# 通用跨平台 DNS 策略(手机/电脑等跨设备终端,不绑定任何设备接口):
+#   使用固定的公网 DNS(223.5.5.5 + 119.29.29.29),不用由 WAN DHCP 动态取得的网关 DNS
+#   或 system;respect-rules 不启用。注: dhcp:// 本身是 Mihomo 支持的合法 DNS 形式,这里
+#   仅指不要在通用配置中依赖某一台设备通过 DHCP 动态获得的网关 DNS。
+#   - 国内双 DNS 作为主解析(223.5.5.5 + 119.29.29.29),用于 nameserver / default-nameserver /
+#     proxy-server-nameserver / direct-nameserver。
+#   - 境外 DNS(tls://1.1.1.1 / tls://8.8.8.8)作为 fallback,配合 fallback-filter 工作:
+#     nameserver 返回 CN IP 时直接采用国内解析结果;
+#     返回非 CN IP,或命中 fallback-filter.ipcidr 的异常地址时,
+#     改用境外 DNS 的 fallback 解析结果。
+#   技术说明: geoip-code: CN 只能识别“境外域名被污染成国外/异常 IP”的情况,无法识别被
+#   污染成中国 IP 的境外域名(CN IP 恰好会被直接接受)。Mihomo 官方对需要明确境外解析的
+#   域名更推荐使用 nameserver-policy 单独指派境外 DNS;fallback-filter.geosite 已被官方标记
+#   为 deprecated,如需按域名分流请改用 nameserver-policy,而非 geosite。
+dns:
+  enable: true
+  listen: 0.0.0.0:7874
+  ipv6: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  direct-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  fallback:
+    - tls://1.1.1.1
+    - tls://8.8.8.8
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - +.lan
+    - +.local
+    - geosite:cn
+    - s.scut.edu.cn
+    - sslvpn2.scut.edu.cn
+    - sslvpn3.scut.edu.cn
+    - webvpn.scut.edu.cn
+    - connect.rom.miui.com
+    - +.msftconnecttest.com
+    - +.msftncsi.com
+
+ipv6: true
+
+# ========================
+# TUN 模块
+# ========================
+tun:
+  enable: true
+  stack: gvisor
+  device: utun
+  endpoint-independent-nat: true
+  auto-route: false
+  auto-detect-interface: false
+  auto-redirect: false
+  strict-route: false
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# ========================
+# 策略组定义
+# ========================
+default: &default
+  type: select
+  proxies:
+    - 所有-自动
+    - 所有-手动
+    - 香港-故转
+    - 香港-手动
+    - 台湾-故转
+    - 台湾-手动
+    - 日本-故转
+    - 日本-手动
+    - 新加坡-故转
+    - 新加坡-手动
+    - 韩国-故转
+    - 韩国-手动
+    - 美国-故转
+    - 美国-手动
+    - 英国-故转
+    - 英国-手动
+    - 德国-故转
+    - 德国-手动
+    - 其他-故转
+    - 其他-手动
+    - 直连
+    - 拒绝
+
+proxy-groups:
+
+  # 校园资源专用组:默认自动优先 EasyConnect,不可用时仅校园流量回退直连。
+  # 校内可手动选“直连”；校外选“SCUT-EasyConnect”或保留默认“校园网-故转”。
+  - name: 校园网
+    type: select
+    proxies:
+      - 校园网-故转
+      - SCUT-EasyConnect
+      - 直连
+  - name: 校园网-故转
+    type: fallback
+    proxies:
+      - SCUT-EasyConnect
+      - 直连
+    url: http://connect.rom.miui.com/generate_204
+    interval: 60
+    lazy: false
+    timeout: 5000
+    disable-udp: true
+
+  # 业务分流组
+  # ---- AI ----
+  - {name: ChatGPT, <<: *default}
+  - {name: Claude, <<: *default}
+  - {name: Gemini, <<: *default}
+  - {name: Grok, <<: *default}
+  - {name: 其他AI, <<: *default}
+  # ---- GitHub / LinuxDo ----
+  - {name: GitHub, <<: *default}
+  - {name: LinuxDo, <<: *default}
+  # ---- 社交 ----
+  - {name: X, <<: *default}
+  - {name: Instagram, <<: *default}
+  - {name: Telegram, <<: *default}
+  - {name: WhatsApp, <<: *default}
+  - {name: Facebook, <<: *default}
+  - {name: TikTok, <<: *default}
+  - {name: Discord, <<: *default}
+  - {name: Reddit, <<: *default}
+  # ---- 流媒体 ----
+  - {name: Netflix, <<: *default}
+  - {name: YouTube, <<: *default}
+  - {name: Spotify, <<: *default}
+  - {name: Stream Media, <<: *default}
+  # ---- 云/系统 ----
+  - {name: Google, <<: *default}
+  - {name: Microsoft, <<: *default}
+  - {name: Apple, <<: *default}
+  - {name: Nvidia, <<: *default}
+  - {name: Cloud, <<: *default}
+  # ---- 游戏 ----
+  - {name: Games, <<: *default}
+  # ---- Crypto ----
+  - {name: Crypto, <<: *default}
+  # ---- 兜底 ----
+  - {name: Test, <<: *default}
+  - {name: 国外, <<: *default}
+  # 国内组:默认直连(不走代理),保留手动切换选项
+  - name: 国内
+    type: select
+    proxies:
+      - 直连
+      - 所有-自动
+      - 所有-手动
+      - 拒绝
+  - {name: 其他, <<: *default}
+  # Block 组:默认拒绝,不继承 default(后者默认走代理)
+  - name: Block
+    type: select
+    proxies:
+      - 拒绝
+      - 直连
+      - 所有-自动
+      - 所有-手动
+
+  # 全局手选/自动
+  - name: 所有-手动
+    type: select
+    include-all: true
+    filter: "^((?!(SCUT-EasyConnect|直连|拒绝)).)*$"
+
+  - name: 所有-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "^((?!(SCUT-EasyConnect|直连|拒绝)).)*$"
+
+  # 香港组
+  - name: 香港-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [香港-手动, 香港-自动]
+  - name: 香港-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广港|香港|HK|Hong Kong|🇭🇰|HongKong)).*$"
+  - name: 香港-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广港|香港|HK|Hong Kong|🇭🇰|HongKong)).*$"
+
+  # 台湾组
+  - name: 台湾-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [台湾-手动, 台湾-自动]
+  - name: 台湾-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广台|台湾|台灣|TW|Tai Wan|🇹🇼|🇨🇳|TaiWan|Taiwan)).*$"
+  - name: 台湾-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广台|台湾|台灣|TW|Tai Wan|🇹🇼|🇨🇳|TaiWan|Taiwan)).*$"
+
+  # 日本组
+  - name: 日本-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [日本-手动, 日本-自动]
+  - name: 日本-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广日|日本|JP|川日|东京|大阪|泉日|埼玉|沪日|深日|🇯🇵|Japan)).*$"
+  - name: 日本-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广日|日本|JP|川日|东京|大阪|泉日|埼玉|沪日|深日|🇯🇵|Japan)).*$"
+
+  # 新加坡组
+  - name: 新加坡-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [新加坡-手动, 新加坡-自动]
+  - name: 新加坡-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广新|新加坡|SG|坡|狮城|🇸🇬|Singapore)).*$"
+  - name: 新加坡-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广新|新加坡|SG|坡|狮城|🇸🇬|Singapore)).*$"
+
+  # 韩国组
+  - name: 韩国-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [韩国-手动, 韩国-自动]
+  - name: 韩国-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广韩|韩国|韓國|KR|首尔|春川|🇰🇷|Korea)).*$"
+  - name: 韩国-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广韩|韩国|韓國|KR|首尔|春川|🇰🇷|Korea)).*$"
+
+  # 美国组
+  - name: 美国-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [美国-手动, 美国-自动]
+  - name: 美国-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广美|US|美国|纽约|波特兰|达拉斯|俄勒|凤凰城|费利蒙|洛杉|圣何塞|圣克拉|西雅|芝加|🇺🇸|United States)).*$"
+  - name: 美国-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广美|US|美国|纽约|波特兰|达拉斯|俄勒|凤凰城|费利蒙|洛杉|圣何塞|圣克拉|西雅|芝加|🇺🇸|United States)).*$"
+
+  # 英国组
+  - name: 英国-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [英国-手动, 英国-自动]
+  - name: 英国-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(英国|英|伦敦|UK|United Kingdom|🇬🇧|London)).*$"
+  - name: 英国-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(英国|英|伦敦|UK|United Kingdom|🇬🇧|London)).*$"
+
+  # 德国组(新增)
+  - name: 德国-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [德国-手动, 德国-自动]
+  - name: 德国-手动
+    type: select
+    include-all: true
+    filter: "(?=.*(广德|德国|德意志|DE|Germany|Frankfurt|法兰克福|法克福|🇩🇪|Düsseldorf|柏林|Berlin|慕尼黑|Munich)).*$"
+  - name: 德国-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "(?=.*(广德|德国|德意志|DE|Germany|Frankfurt|法兰克福|法克福|🇩🇪|Düsseldorf|柏林|Berlin|慕尼黑|Munich)).*$"
+
+  # 其他组(排除以上地区 + 直连/拒绝)
+  - name: 其他-故转
+    type: fallback
+    interval: 180
+    lazy: false
+    proxies: [其他-手动, 其他-自动]
+  - name: 其他-手动
+    type: select
+    include-all: true
+    filter: "^((?!(SCUT-EasyConnect|直连|拒绝|广港|香港|HK|Hong Kong|🇭🇰|HongKong|广台|台湾|台灣|TW|Tai Wan|🇹🇼|🇨🇳|TaiWan|Taiwan|广日|日本|JP|川日|东京|大阪|泉日|埼玉|沪日|深日|🇯🇵|Japan|广新|新加坡|SG|坡|狮城|🇸🇬|Singapore|广韩|韩国|韓國|KR|首尔|春川|🇰🇷|Korea|广美|US|美国|纽约|波特兰|达拉斯|俄勒|凤凰城|费利蒙|洛杉|圣何塞|圣克拉|西雅|芝加|🇺🇸|United States|英国|英|伦敦|UK|United Kingdom|🇬🇧|London|广德|德国|德意志|DE|Germany|Frankfurt|法兰克福|法克福|🇩🇪|Düsseldorf|柏林|Berlin|慕尼黑|Munich)).)*$"
+  - name: 其他-自动
+    type: url-test
+    include-all: true
+    tolerance: 50
+    interval: 180
+    filter: "^((?!(SCUT-EasyConnect|直连|拒绝|广港|香港|HK|Hong Kong|🇭🇰|HongKong|广台|台湾|台灣|TW|Tai Wan|🇹🇼|🇨🇳|TaiWan|Taiwan|广日|日本|JP|川日|东京|大阪|泉日|埼玉|沪日|深日|🇯🇵|Japan|广新|新加坡|SG|坡|狮城|🇸🇬|Singapore|广韩|韩国|韓國|KR|首尔|春川|🇰🇷|Korea|广美|US|美国|纽约|波特兰|达拉斯|俄勒|凤凰城|费利蒙|洛杉|圣何塞|圣克拉|西雅|芝加|🇺🇸|United States|英国|英|伦敦|UK|United Kingdom|🇬🇧|London|广德|德国|德意志|DE|Germany|Frankfurt|法兰克福|法克福|🇩🇪|Düsseldorf|柏林|Berlin|慕尼黑|Munich)).)*$"
+
+# ========================
+# 规则引擎（rules）
+# ========================
+rules:
+  # ---- 华南理工 Portal / SSLVPN 控制面 & 联网检测:最高优先级直连 ----
+  - DOMAIN,s.scut.edu.cn,直连
+  - IP-CIDR,202.38.210.131/32,直连,no-resolve
+  - DOMAIN,sslvpn2.scut.edu.cn,直连
+  - DOMAIN,sslvpn3.scut.edu.cn,直连
+  - DOMAIN,webvpn.scut.edu.cn,直连
+  - DOMAIN,connect.rom.miui.com,直连
+  - DOMAIN-SUFFIX,msftconnecttest.com,直连
+  - DOMAIN-SUFFIX,msftncsi.com,直连
+  # ---- 私网/内网 & 校园网基础设施:最高优先级直连 (避免内网 DNS 被代理) ----
+  - IP-CIDR,10.0.0.0/8,直连,no-resolve
+  - IP-CIDR,172.16.0.0/12,直连,no-resolve
+  - IP-CIDR,192.168.0.0/16,直连,no-resolve
+  - IP-CIDR,100.64.0.0/10,直连,no-resolve
+  - IP-CIDR,127.0.0.0/8,直连,no-resolve
+  - IP-CIDR,169.254.0.0/16,直连,no-resolve
+  - IP-CIDR6,::1/128,直连,no-resolve
+  - IP-CIDR6,fc00::/7,直连,no-resolve
+  - IP-CIDR6,fe80::/10,直连,no-resolve
+  # ---- 仅需校园出口的资源:在 AI / 国内 / 兜底规则之前送入校园网组 ----
+  - RULE-SET,SCUT Campus,校园网
+  # ---- AI ----
+
+  - RULE-SET,ChatGPT / Domain,ChatGPT
+  - RULE-SET,Claude / Domain,Claude
+  - RULE-SET,Gemini / Domain,Gemini
+  - RULE-SET,Grok / Domain,Grok        # xAI 生态(grok.com / x.ai)
+  # 其余 AI(Meta AI/Copilot/Perplexity/Groq 等)→ 其他AI 组
+  - RULE-SET,Groq / Domain,其他AI
+  - RULE-SET,Meta AI / Domain,其他AI
+  - RULE-SET,Copilot / Domain,其他AI
+  - RULE-SET,Perplexity / Domain,其他AI
+
+  # ---- GitHub / LinuxDo ----
+  - RULE-SET,GitHub / Domain,GitHub
+  - RULE-SET,LinuxDo / Domain,LinuxDo
+
+  # ---- 社交 ----
+  - RULE-SET,X / Domain,X
+  - RULE-SET,X / IP,X,no-resolve
+  - RULE-SET,Instagram / Domain,Instagram
+  - RULE-SET,Telegram / Domain,Telegram
+  - RULE-SET,Telegram / IP,Telegram,no-resolve
+  - RULE-SET,WhatsApp / Domain,WhatsApp
+  - RULE-SET,Facebook / Domain,Facebook
+  - RULE-SET,TikTok / Domain,TikTok
+  - RULE-SET,Discord / Domain,Discord
+  - RULE-SET,Reddit / Domain,Reddit
+
+  # ---- 流媒体 ----
+  - RULE-SET,Netflix / Domain,Netflix
+  - RULE-SET,Netflix / IP,Netflix,no-resolve
+  - RULE-SET,Youtube / Domain,YouTube
+  - RULE-SET,Spotify / Domain,Spotify
+  - RULE-SET,Disney / Domain,Stream Media
+  - RULE-SET,HBO / Domain,Stream Media
+  - RULE-SET,Amazon / Domain,Stream Media
+  # Crunchyroll / Popcorn 合并为 Anime(统一走 geosite/anime.mrs 动漫合集)
+  - RULE-SET,Anime / Domain,Stream Media
+
+  # ---- 云/系统 ----
+  - RULE-SET,Google / Domain,Google
+  - RULE-SET,Google / IP,Google,no-resolve
+  - RULE-SET,Microsoft / Domain,Microsoft
+  - RULE-SET,Apple / Domain,Apple
+  - RULE-SET,Apple-CN / Domain,Apple
+  - RULE-SET,Apple-Custome / Domain,Apple
+  - RULE-SET,Nvidia / Domain,Nvidia
+  # Adobe 等 → Cloud 兜底组
+  - RULE-SET,Adobe / Domain,Cloud
+  - RULE-SET,AdobeActivation / Domain,Cloud
+
+  # ---- 游戏 ----
+  - RULE-SET,Steam / Domain,Games
+  - RULE-SET,Epic / Domain,Games
+  - RULE-SET,EA / Domain,Games
+  - RULE-SET,Blizzard / Domain,Games
+  - RULE-SET,UBI / Domain,Games
+  - RULE-SET,PlayStation / Domain,Games
+  - RULE-SET,Nintend / Domain,Games
+
+  # ---- Crypto ----
+  - RULE-SET,OKX / Domain,Crypto
+  - RULE-SET,Bybit / Domain,Crypto
+  - RULE-SET,Binance / Domain,Crypto
+  # 加密货币/交易站点域名直配(放入 Crypto 组,位于兜底规则之前,确保优先命中)
+  - DOMAIN-SUFFIX,krak.app,Crypto
+  - DOMAIN-SUFFIX,kraken.com,Crypto
+  - DOMAIN-SUFFIX,bybit.eu,Crypto
+  - DOMAIN-SUFFIX,ether.fi,Crypto
+  - DOMAIN-SUFFIX,trading212.com,Crypto
+  - DOMAIN-SUFFIX,monese.com,Crypto
+  - DOMAIN-SUFFIX,myfin.bg,Crypto
+  - DOMAIN-SUFFIX,altery.com,Crypto
+
+  # ---- 测试与兜底 ----
+  - RULE-SET,Test / Domain,Test
+  # 查 IP / 测节点定向到 Test 组,方便验证节点出口
+  - DOMAIN-SUFFIX,ping0.cc,Test
+  - DOMAIN-SUFFIX,ip.sb,Test
+  - DOMAIN-SUFFIX,ipinfo.io,Test
+  - DOMAIN-SUFFIX,ifconfig.me,Test
+  - DOMAIN-SUFFIX,myip.ipip.net,Test
+  - DOMAIN-SUFFIX,ip138.com,Test
+  - DOMAIN-SUFFIX,whatismyip.com,Test
+  - DOMAIN-SUFFIX,ipleak.net,Test
+  - DOMAIN-SUFFIX,ipaddress.com,Test
+  - DOMAIN-SUFFIX,ip111.cn,Test
+  - DOMAIN-SUFFIX,checkip.amazonaws.com,Test
+  - DOMAIN-SUFFIX,api.ipify.org,Test
+  - DOMAIN-SUFFIX,icanhazip.com,Test
+  - DOMAIN-SUFFIX,ip.3322.net,Test
+  - DOMAIN-SUFFIX,ifconfig.co,Test
+  - DOMAIN-SUFFIX,ipecho.net,Test
+  - DOMAIN-SUFFIX,whatismyipaddress.com,Test
+  - DOMAIN-SUFFIX,api-ip.com,Test
+  - DOMAIN-SUFFIX,myip.wtf,Test
+  - DOMAIN-SUFFIX,ipinfo.cc,Test
+  - RULE-SET,Block / Domain,Block
+  # Proxy/Globe 历史上同指 Global.list 造成重复,这里只保留一条全局代理规则
+  - RULE-SET,Proxy / Domain,国外
+  - RULE-SET,Direct / Domain,国内
+  - RULE-SET,China / Domain,国内
+  - RULE-SET,China / IP,国内,no-resolve
+  - RULE-SET,Private / Domain,国内
+
+  - MATCH,其他
+
+# ========================
+# 规则集提供者
+# ========================
+rule-anchor:
+  ip: &ip {type: http, interval: 86400, behavior: ipcidr, format: mrs}
+  domain: &domain {type: http, interval: 86400, behavior: domain, format: mrs}
+  class: &class {type: http, interval: 86400, behavior: classical, format: text}
+
+rule-providers:
+  # 内联校园规则集随 YAML 一起更新，无需在 Cudy 上另放规则文件。
+  # 实验室私有域名/IP 可继续追加到 payload；Portal 与 SSLVPN 入口必须留在顶部直连规则。
+  SCUT Campus:
+    type: inline
+    behavior: classical
+    payload:
+      # SCUT 校内系统 / 图书馆 / 科研平台
+      - DOMAIN,oa.scut.edu.cn
+      - DOMAIN,oa2020.scut.edu.cn
+      - DOMAIN,jw.scut.edu.cn
+      - DOMAIN,ehall.scut.edu.cn
+      - DOMAIN,my.scut.edu.cn
+      - DOMAIN,jyzx.scut.edu.cn
+      - DOMAIN,www.lib.scut.edu.cn
+      - DOMAIN,hpc.scut.edu.cn
+      - DOMAIN,hpckapok.scut.edu.cn
+      - DOMAIN,hpckapok1.scut.edu.cn
+      - DOMAIN,hpckapok2.scut.edu.cn
+      # SCUT HPC 官方登录节点
+      - IP-CIDR,202.38.252.202/32,no-resolve
+      - IP-CIDR,202.38.252.203/32,no-resolve
+      - IP-CIDR,202.38.252.204/32,no-resolve
+      - IP-CIDR,202.38.252.205/32,no-resolve
+      - IP-CIDR,202.38.252.210/32,no-resolve
+      - IP-CIDR,202.38.252.211/32,no-resolve
+      # 常用图书馆数据库:经校园出口取得机构访问权限
+      - DOMAIN-SUFFIX,cnki.net
+      - DOMAIN-SUFFIX,cnki.com.cn
+      - DOMAIN-SUFFIX,wanfangdata.com.cn
+      - DOMAIN-SUFFIX,ieee.org
+      - DOMAIN-SUFFIX,sciencedirect.com
+      - DOMAIN-SUFFIX,elsevier.com
+      - DOMAIN-SUFFIX,springer.com
+      - DOMAIN-SUFFIX,springernature.com
+      - DOMAIN-SUFFIX,nature.com
+      - DOMAIN-SUFFIX,wiley.com
+      - DOMAIN-SUFFIX,webofscience.com
+      - DOMAIN-SUFFIX,clarivate.com
+      - DOMAIN-SUFFIX,acs.org
+      - DOMAIN-SUFFIX,rsc.org
+      - DOMAIN-SUFFIX,jstor.org
+      - DOMAIN-SUFFIX,ebscohost.com
+
+  # ============================================================================
+  # 规则集来源镜像说明(重要):
+  #   - 主源(默认): gh-proxy.com —— 社区老牌 GitHub 加速镜像。
+  #   - 保底镜像:   ghproxy.freeapp.tech —— CF 搭建的备用加速镜像。
+  #
+  # 当 gh-proxy.com 偶发限流(403/拉取失败)时,可用下面命令把全部规则集
+  # 一键切换到保底镜像(所有 url 仅差域名前缀,已实测兼容):
+  #
+  #   sed -i 's|https://gh-proxy\.com|https://ghproxy.freeapp.tech|g' clash-mi-detail.yaml
+  #
+  # 切换后重新加载客户端 / 重启 Clash Mi 即可。恢复正常后可切回 gh-proxy.com:
+  #
+  #   sed -i 's|https://ghproxy\.freeapp\.tech|https://gh-proxy.com|g' clash-mi-detail.yaml
+  # ============================================================================
+  # ---- AI ----
+  ChatGPT / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/openai.mrs"}
+  Claude / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Claude/Claude.list"}
+  Gemini / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Gemini/Gemini.list"}
+  X / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/x.mrs"}
+  X / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/twitter.mrs"}
+  Grok / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/xai.mrs"}
+  Groq / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/groq.mrs"}
+  Meta AI / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/meta.mrs"}
+  Copilot / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Copilot/Copilot.list"}
+  Perplexity / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/perplexity.mrs"}
+
+  # ---- GitHub / LinuxDo ----
+  GitHub / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/github.mrs"}
+  LinuxDo / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/linuxdo.mrs"}
+
+  # ---- 社交 ----
+  Instagram / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/instagram.mrs"}
+  Telegram / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/telegram.mrs"}
+  Telegram / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/telegram.mrs"}
+  WhatsApp / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Whatsapp/Whatsapp.list"}
+  Facebook / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/facebook.mrs"}
+  TikTok / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/tiktok.mrs"}
+  Discord / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/discord.mrs"}
+  Reddit / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/reddit.mrs"}
+
+  # ---- 流媒体 ----
+  Netflix / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/netflix.mrs"}
+  Netflix / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/netflix.mrs"}
+  Youtube / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/youtube.mrs"}
+  Spotify / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/spotify.mrs"}
+  Disney / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/disney.mrs"}
+  HBO / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/hbo.mrs"}
+  Amazon / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs"}
+  # Crunchyroll/Popcorn 无独立规则集,合并为 Anime 统一走 geosite/anime.mrs(动漫合集,含 ACG 站点)
+  Anime / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
+
+  # ---- 云/系统 ----
+  Google / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/google.mrs"}
+  Google / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/google.mrs"}
+  Microsoft / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/microsoft.mrs"}
+  Apple / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple.mrs"}
+  Apple-CN / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple-cn.mrs"}
+  Apple-Custome / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.list"}
+  Nvidia / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Nvidia/Nvidia.list"}
+  Adobe / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Adobe/Adobe.list"}
+  AdobeActivation / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdobeActivation/AdobeActivation.list"}
+
+  # ---- 游戏 ----
+  Steam / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/steam.mrs"}
+  Epic / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Epic/Epic.list"}
+  EA / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/EA/EA.list"}
+  Blizzard / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Blizzard/Blizzard.list"}
+  UBI / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/UBI/UBI.list"}
+  PlayStation / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/PlayStation/PlayStation.list"}
+  Nintend / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Nintendo/Nintendo.list"}
+
+  # ---- Crypto ----
+  OKX / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/okx.mrs"}
+  Bybit / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/bybit.mrs"}
+  Binance / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/binance.mrs"}
+
+  # ---- 兜底 ----
+  Test / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Speedtest/Speedtest.list"}
+  Block / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Advertising/Advertising.list"}
+  Proxy / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global.list"}
+  # Globe 已并入 Proxy(原同指 Global.list),仅保留一个全局代理 provider
+  Direct / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Direct/Direct.list"}
+  China / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/cn.mrs"}
+  China / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/cn.mrs"}
+  Private / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/private.mrs"}

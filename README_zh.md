@@ -17,33 +17,35 @@
 | 文件 | 说明 |
 |------|------|
 | `clash-mi-detail.yaml` | 通用配置(手机/电脑等任意 ClashMi/Mihomo 客户端),含华南理工校园网保护 |
+| `clash-mi-detail-sslvpn.yaml` | `clash-mi-detail.yaml` + 本机 EasyConnect SOCKS5 + 校园资源按需回校 |
 | `openclash.yaml` | **Cudy 日常使用**(不承担校园网出口节点)。基于 `clash-mi-detail.yaml` + 关闭 IPv6 + `router_self_proxy=0` |
+| `openclash-sslvpn.yaml` | **Cudy 校外进入校园网**。`openclash.yaml` + 本机 EasyConnect SOCKS5 + “校园网”策略组 |
 | `openclash-backnode.yaml` | **Cudy 校园网出口节点**。即 `openclash.yaml` + 监听 `127.0.0.1:10443` 的 VLESS WebSocket listener(配合 Cloudflare Tunnel) |
 
-### 华南理工校园网适配(三份均含)
+### 华南理工校园网适配(五份均含)
 
-三份配置都将校园网认证 Portal 与联网探测域名排除出代理(最高优先级 `直连` 规则):
+五份配置都将校园网认证 Portal 与联网探测域名排除出代理(最高优先级 `直连` 规则):
 
 - `fake-ip-filter`: `s.scut.edu.cn`、`connect.rom.miui.com`、`+.msftconnecttest.com`、`+.msftncsi.com`
 - `rules:` 顶部: `DOMAIN,s.scut.edu.cn`、`IP-CIDR,202.38.210.131/32`、`DOMAIN,connect.rom.miui.com`、`DOMAIN-SUFFIX,msftconnecttest.com`、`DOMAIN-SUFFIX,msftncsi.com` → `直连`
 
 这些 Portal / 联网探测条目(MIUI / MSFT 连通性检测)在任何普通网络环境都安全保留——它们仅把已知探测域名排除出代理,不会破坏正常联网。
 
-Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要求 OpenClash UCI 设 `router_self_proxy=0`,避免路由器本机的 `scut_portal_login.sh` 和系统流量被透明代理。
+Cudy/OpenClash 三版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要求 OpenClash UCI 设 `router_self_proxy=0`,避免路由器本机的 `scut_portal_login.sh`、EasyConnect 控制流量和系统流量被透明代理。
 
 #### 可移植原则
 
-三份配置的 DNS 段一律**不写死设备接口**(如 `#apclix0`),可跨手机 / PC / 路由器以及任意 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)使用,DNS 统一用纯 IP + Mihomo 的 fallback / 分流机制。
+五份配置的 DNS 段一律**不写死设备接口**(如 `#apclix0`),可跨手机 / PC / 路由器以及任意 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)使用,DNS 统一用纯 IP + Mihomo 的 fallback / 分流机制。
 
 #### 静态 DNS · 无 DHCP 递归
 
-三份配置的 DNS 上游一律**静态、明确、无 DHCP 递归**:`nameserver`、`default-nameserver`、`proxy-server-nameserver`、`direct-nameserver` 只使用固定的公网 DNS(`223.5.5.5` + `119.29.29.29`;`clash-mi-detail.yaml` 另以 `tls://1.1.1.1` / `tls://8.8.8.8` 作为 `fallback`)。不要填入 `dhcp://`、`dhcp://apclix0`、`system`、校园网网关 DNS 或任何由 WAN DHCP 动态取得的 DNS——这些会形成 DNS 上游循环,导致 7874 查询堆积、DNS 超时与高 CPU。`respect-rules` 保持不启用。
+五份配置的 DNS 上游一律**静态、明确、无 DHCP 递归**:`nameserver`、`default-nameserver`、`proxy-server-nameserver`、`direct-nameserver` 只使用固定的公网 DNS(`223.5.5.5` + `119.29.29.29`;两份 `clash-mi-detail*` 另以 `tls://1.1.1.1` / `tls://8.8.8.8` 作为 `fallback`)。不要填入 `dhcp://`、`dhcp://apclix0`、`system`、校园网网关 DNS 或任何由 WAN DHCP 动态取得的 DNS——这些会形成 DNS 上游循环,导致 7874 查询堆积、DNS 超时与高 CPU。`respect-rules` 保持不启用。
 
 > **OpenClash 运行时注意**:若源 YAML 已无 `dhcp://apclix0`,但 `/etc/openclash/openclash.yaml` 启动后仍自动出现 `dhcp://"apclix0"`(或其它 WAN DNS),那是 **OpenClash 自身启动阶段自动追加 WAN/DHCP DNS**,不是仓库 YAML 能解决的问题。请在 OpenClash 设置中关闭 “DNS 覆写 / 追加 WAN DNS ”,否则循环会在运行时被重新注入。
 
 #### 华南理工 · Cudy 接口绑定说明
 
-本仓库的三份配置**就是** Cudy / SCUT 本地部署配置(公开仓库版本与 Cudy 本地部署是同一个东西,并非两套)。DNS 上游统一写成纯公网 IP,以保持对路由器实际所用 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)的可移植性。
+本仓库的配置**就是** Cudy / SCUT 本地部署配置(公开仓库版本与 Cudy 本地部署是同一个东西,并非两套)。DNS 上游统一写成纯公网 IP,以保持对路由器实际所用 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)的可移植性。
 
 当部署在 Cudy 上、且实际校园 WAN 出口确实为 `apclix0` 接口时(例如 4G 模块接校园 Wi-Fi AP),可把 DNS 上游绑定到该接口以强制 DNS 走校园 WAN:
 
@@ -55,9 +57,9 @@ nameserver:
 # 如需要,对 default-nameserver / proxy-server-nameserver / direct-nameserver 同样绑定
 ```
 
-为避免日后 3~4 份大配置长期漂移,本仓库**不单独维护**第四份完整 `scut-campus.yaml`;接口绑定按需手工套用即可。
+为避免额外规则文件与 YAML 漂移,两份 SSLVPN 配置将 `SCUT Campus` 做成内联 classical rule-provider；实验室私有域名/IP 可直接追加到其 `payload`。CI 会校验两份 SSLVPN 文件除 EasyConnect 覆盖层外分别与其基线一致。
 
-> `clash-mi-detail.yaml`(IPv6 开启)的私网直连规则含 IPv6(`::1/128`、`fc00::/7`、`fe80::/10`);两份 OpenClash 全局 IPv6 已关闭,故只保留 IPv4 私网直连。
+> 两份 `clash-mi-detail*`(IPv6 开启)的私网直连规则含 IPv6(`::1/128`、`fc00::/7`、`fe80::/10`);三份 OpenClash 全局 IPv6 已关闭,故只保留 IPv4 私网直连。
 
 ## 下载 Clash Mi
 
@@ -87,9 +89,25 @@ nameserver:
 1. **日常使用(无出口节点):**导入 `openclash.yaml`。在 OpenClash 设置 `router_self_proxy=0`;两个 `ipv6` 已默认 `false`。
 2. **校园网出口节点(Cloudflare Tunnel → VLESS/WS):**导入 `openclash-backnode.yaml`,把 `YOUR_VLESS_UUID_PLACEHOLDER` 换成 XBoard 实际下发给 ClashMi 的真实 UUID,Cloudflare Tunnel 公开域名 `tunnel.freeapp.tech` → HTTP → `127.0.0.1:10443`(路径留空)。客户端节点:VLESS、连接 `tunnel.freeapp.tech:443`、传输 WebSocket、路径 `/`、TLS 开启、SNI/Host `tunnel.freeapp.tech`、Flow 空、Reality 关闭。
 
+### EasyConnect / 双向校园网络
+
+EasyConnect 的 ARM GUI/noVNC 容器是 **Cudy 一次性底层部署**，不写入 Mihomo YAML。容器需把无需认证的 SOCKS5 仅发布到宿主机 `127.0.0.1:1080`；短信验证码仍在 noVNC 界面完成。部署完成后，日常只更新 `openclash-sslvpn.yaml`（或同机使用的 `clash-mi-detail-sslvpn.yaml`）。
+
+两份 SSLVPN 配置使用 Mihomo 的 `type: inline` rule-provider，须使用支持该类型的较新内核；CI 跟随官方最新稳定版验证。旧版 v1.18.10 不支持 `inline`，若 Cudy 仍是该版本，首次部署 EasyConnect 时需在 OpenClash 内一并升级 Mihomo 内核；原三份配置不受此要求影响。
+
+| 场景 | 使用方式 |
+|------|----------|
+| 校内直连 | 使用 `openclash-sslvpn.yaml`，把“校园网”切到 `直连`；也可继续使用原 `openclash.yaml` |
+| 校外 EasyConnect | 容器登录 `sslvpn2.scut.edu.cn` 或 `sslvpn3.scut.edu.cn`，使用默认“校园网-故转”或手选 `SCUT-EasyConnect` |
+| campus exit-node | 校内 Cudy 使用原 `openclash-backnode.yaml`，把校园出口通过 Cloudflare Tunnel/VLESS 提供给远端 |
+
+“校园网-故转”每 60 秒检测一次本机 EasyConnect SOCKS5，优先 `SCUT-EasyConnect`、失败后回退 `直连`。只有 `SCUT Campus` 命中的校内系统、HPC 登录节点和常用图书馆数据库进入该组；AI、流媒体、地区和普通国内外流量继续使用原规则。未完成短信验证码登录时，最多只是校外无法取得校园资源权限，不会拖垮其他网络。
+
+`s.scut.edu.cn`、`sslvpn2.scut.edu.cn`、`sslvpn3.scut.edu.cn`、`webvpn.scut.edu.cn` 始终位于校园 rule-set 之前并固定 `直连`，防止认证/控制连接被送回 EasyConnect 形成递归。
+
 ## 分组结构
 
-### 业务分流组(31)
+### 业务分流组(基础配置 31；SSLVPN 版另加“校园网”)
 
 - **AI(5)**:ChatGPT / Claude / Gemini / Grok(xAI:grok.com、x.ai)/ 其他AI(Groq、Copilot、Meta AI、Perplexity…)
 - **独立站点(2)**:GitHub / LinuxDo
@@ -110,6 +128,7 @@ nameserver:
 规则自上而下匹配(命中即停)。兜底漏斗如下:
 
 ```
+RULE-SET,SCUT Campus,校园网        # 仅 SSLVPN 版；Portal/控制面直连规则之后
 RULE-SET Proxy / Domain,国外      # 明确要加速的海外域名 → 国外
 RULE-SET Direct / Domain,国内     # 已知直连域名 → 国内
 RULE-SET China / Domain,国内      # 中国大陆域名 → 国内
@@ -124,7 +143,7 @@ MATCH,其他                        # 其余全部 → 其他
 
 ## 规则来源
 
-所有 provider 经 `gh-proxy.com`(GitHub 加速镜像)拉取:
+外部 provider 经 `gh-proxy.com`(GitHub 加速镜像)拉取；SSLVPN 两版的 `SCUT Campus` 为随 YAML 分发的内联规则集:
 - [metacubex/meta-rules-dat](https://github.com/metacubex/meta-rules-dat) — `.mrs` GeoSite/GeoIP 数据库(更新频繁)
 - [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script) — `.list` 规则集
 
@@ -144,7 +163,7 @@ MATCH,其他                        # 其余全部 → 其他
 
 | 检查 | 作用 |
 |------|------|
-| YAML + 一致性 | `scripts/validate.py` —— 解析每个 `*.yaml`,校验必需顶层键、DNS 递归防护(实时配置中不允许 `dhcp://`/`system`/`apclix0`)、可移植性防护(实时代码中不允许写死 `IP#接口`)、rule-provider URL 合法性 |
+| YAML + 一致性 | `scripts/validate.py` —— 解析五份配置,校验必需顶层键、DNS 递归/接口绑定防护、rule-provider 合法性、EasyConnect 节点与校园组结构、Portal/校园规则优先级，并证明两份 SSLVPN 文件仅增加预期覆盖层 |
 | Mihomo 配置测试 | `scripts/mihomo_test.sh` —— 拉取官方 `mihomo` 二进制,在**副本**上把机场订阅占位符和安全密钥替换后,对每个配置跑 `mihomo -t` |
 | 规则 URL 可用性 | `scripts/check_rules.py` —— 并发 HEAD/GET 每个 `rule-provider` URL 及健康探测地址 `gstatic.com/generate_204` |
 
@@ -157,7 +176,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(三份配置 + README + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。每个发布都先过一遍 CI 校验门槛。
+会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(五份配置 + README + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。每个发布都先过一遍 CI 校验门槛。
 
 ### 本地跑校验
 
