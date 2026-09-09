@@ -1,3 +1,6 @@
+mode: rule
+# 保持 mode 位于文件开头，兼容仅检查前 1000 字节的 OpenClash 上传校验。
+
 # ========================
 # Clash-Mi 细化分流配置
 # ========================
@@ -85,7 +88,6 @@ redir-port: 7892
 tproxy-port: 7895
 
 allow-lan: true
-mode: rule
 log-level: info
 
 external-controller: 0.0.0.0:9090
