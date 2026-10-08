@@ -113,6 +113,7 @@ The SSLVPN variants use Mihomo's `type: inline` rule-provider and therefore requ
 ### Business Groups / 业务分流组 (31 base groups; SSLVPN adds `校园网`)
 
 - **AI (5)**: ChatGPT / Claude / Gemini / Grok (xAI: grok.com, x.ai) / 其他AI (Groq, Copilot, Meta AI, Perplexity…)
+  - **Claude**: Now includes comprehensive official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32), and AS399358. Optional shared telemetry rules (sentry.io, intercom, datadog, statsigapi.net) are documented but commented out by default to avoid affecting other services.
 - **Standalone (2)**: GitHub / LinuxDo
 - **Social (8)**: X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
 - **Streaming (4)**: Netflix / YouTube / Spotify / Stream Media (Disney, HBO, Amazon, Crunchyroll, Popcorn…)

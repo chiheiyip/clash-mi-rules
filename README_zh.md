@@ -110,6 +110,7 @@ EasyConnect 的 ARM GUI/noVNC 容器是 **Cudy 一次性底层部署**，不写�
 ### 业务分流组(基础配置 31；SSLVPN 版另加“校园网”)
 
 - **AI(5)**:ChatGPT / Claude / Gemini / Grok(xAI:grok.com、x.ai)/ 其他AI(Groq、Copilot、Meta AI、Perplexity…)
+  - **Claude**:现已包含完整官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32)及 AS399358。可选共享遥测规则(sentry.io、intercom、datadog、statsigapi.net)已文档化但默认注释，以免影响其他服务。
 - **独立站点(2)**:GitHub / LinuxDo
 - **社交(8)**:X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
 - **流媒体(4)**:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Amazon、Crunchyroll、Popcorn…)

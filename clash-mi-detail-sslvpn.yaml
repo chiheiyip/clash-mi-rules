@@ -469,6 +469,33 @@ rules:
   # ---- AI ----
 
   - RULE-SET,ChatGPT / Domain,ChatGPT
+  # ---- Claude Enhanced Rules ----
+  # Core Claude domains (精确官方域名)
+  - DOMAIN-SUFFIX,anthropic.com,Claude
+  - DOMAIN-SUFFIX,claude.ai,Claude
+  - DOMAIN-SUFFIX,claude.com,Claude
+  - DOMAIN-SUFFIX,clau.de,Claude
+  - DOMAIN-SUFFIX,claudemcpclient.com,Claude
+  - DOMAIN-SUFFIX,claudeusercontent.com,Claude
+  - DOMAIN,servd-anthropic-website.b-cdn.net,Claude
+  - DOMAIN,anthropic.com.cdn.cloudflare.net,Claude
+  - DOMAIN,anthropic.auth0.com,Claude
+  - DOMAIN,anthropic-com.ghost.io,Claude
+  - DOMAIN,cdn.usefathom.com,Claude
+  # Claude IP ranges (AS399358 Anthropic)
+  - IP-CIDR,160.79.104.0/21,Claude,no-resolve
+  - IP-CIDR6,2607:6bc0::/32,Claude,no-resolve
+  - IP-ASN,399358,Claude,no-resolve
+  # Optional: Shared telemetry services (可选规则段 - 共享服务有副作用)
+  # 以下域名/关键词被多个互联网服务共享，启用可能影响其他网站
+  # 建议：仅当 Claude 出现连接问题且确认需要时才取消注释
+  # - DOMAIN-SUFFIX,sentry.io,Claude
+  # - DOMAIN-SUFFIX,statsigapi.net,Claude
+  # - DOMAIN-SUFFIX,intercom.io,Claude
+  # - DOMAIN-SUFFIX,intercomcdn.com,Claude
+  # - DOMAIN,browser-intake-us5-datadoghq.com,Claude
+  # - DOMAIN-KEYWORD,datadog,Claude
+  # - DOMAIN-KEYWORD,sift,Claude
   - RULE-SET,Claude / Domain,Claude
   - RULE-SET,Gemini / Domain,Gemini
   - RULE-SET,Grok / Domain,Grok        # xAI 生态(grok.com / x.ai)
