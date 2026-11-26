@@ -12,10 +12,16 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  config-checks:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: config-checks
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,14 +34,6 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           echo "version=$tag" >> "$GITHUB_OUTPUT"
           echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
-
-      # Validate exactly what CI validates before shipping a release.
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: pip install pyyaml
-      - name: Offline validation gate
-        run: python3 scripts/validate.py
 
       - name: Build release archive
         run: |
@@ -76,8 +74,8 @@ jobs:
             Bundle of the three configs (`clash-mi-detail.yaml`, `openclash.yaml`,
             `openclash-backnode.yaml`), READMEs, validation scripts and a manifest.
 
-            All checks in the CI workflow must pass (YAML parse + Mihomo config
-            test + rule-source URL availability). See `MANIFEST.txt` for per-file
+            The tagged configs passed offline validation and the Mihomo kernel
+            config test. Mirror availability is checked separately. See `MANIFEST.txt` for per-file
             SHA-256 hashes.
           draft: false
           prerelease: false

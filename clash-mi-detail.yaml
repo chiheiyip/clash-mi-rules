@@ -451,7 +451,6 @@ rules:
   - DOMAIN,anthropic.com.cdn.cloudflare.net,Claude
   - DOMAIN,anthropic.auth0.com,Claude
   - DOMAIN,anthropic-com.ghost.io,Claude
-  - DOMAIN,cdn.usefathom.com,Claude
   # Claude IP ranges (AS399358 Anthropic)
   - IP-CIDR,160.79.104.0/21,Claude,no-resolve
   - IP-CIDR6,2607:6bc0::/32,Claude,no-resolve
@@ -459,6 +458,7 @@ rules:
   # Optional: Shared telemetry services (可选规则段 - 共享服务有副作用)
   # 以下域名/关键词被多个互联网服务共享，启用可能影响其他网站
   # 建议：仅当 Claude 出现连接问题且确认需要时才取消注释
+  # - DOMAIN,cdn.usefathom.com,Claude
   # - DOMAIN-SUFFIX,sentry.io,Claude
   # - DOMAIN-SUFFIX,statsigapi.net,Claude
   # - DOMAIN-SUFFIX,intercom.io,Claude

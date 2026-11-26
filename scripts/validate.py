@@ -103,6 +103,9 @@ def check_yaml(path):
     # Comment lines (starting with #) are documentation examples (e.g. the
     # README 'local overlay' note) and must not trip the check.
     raw = open(path, "r", encoding="utf-8").read()
+    if os.path.basename(path) in {"openclash.yaml", "openclash-backnode.yaml"}:
+        if not raw.startswith("mode: rule\n"):
+            err(f"{path}: start the file with 'mode: rule' for the OpenClash upload preview")
     live = "\n".join(
         ln for ln in raw.splitlines() if not ln.lstrip().startswith("#")
     )

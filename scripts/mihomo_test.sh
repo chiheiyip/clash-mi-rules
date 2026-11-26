@@ -56,6 +56,15 @@ else
     -o "$TMP/GeoIP.metadb"
 fi
 
+# The Claude IP-ASN rule also needs the ASN database at parse time.
+if [[ -n "${ASN_MMDB:-}" ]]; then
+  cp "$ASN_MMDB" "$TMP/ASN.mmdb"
+else
+  curl -fsSL \
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb" \
+    -o "$TMP/ASN.mmdb"
+fi
+
 fail=0
 ran=0
 for src in "${EXTRA[@]}"; do

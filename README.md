@@ -97,7 +97,7 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 ### Business Groups / 业务分流组 (31)
 
 - **AI (5)**: ChatGPT / Claude / Gemini / Grok (xAI: grok.com, x.ai) / 其他AI (Groq, Copilot, Meta AI, Perplexity…)
-  - **Claude**: Now includes comprehensive official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32), and AS399358. Optional shared telemetry rules (sentry.io, intercom, datadog, statsigapi.net) are documented but commented out by default to avoid affecting other services.
+  - **Claude**: Now includes comprehensive official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32), and AS399358. Optional shared telemetry rules (cdn.usefathom.com, sentry.io, intercom, datadog, statsigapi.net) are documented but commented out by default to avoid affecting other services.
 - **Standalone (2)**: GitHub / LinuxDo
 - **Social (8)**: X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
 - **Streaming (4)**: Netflix / YouTube / Spotify / Stream Media (Disney, HBO, Amazon, Crunchyroll, Popcorn…)
@@ -163,7 +163,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-A GitHub Release is created with a `clash-mi-rules-<version>.tar.gz` bundle (the three configs, READMEs, scripts) plus a `MANIFEST.txt` with a SHA-256 per file. CI validation gates every release.
+A GitHub Release is created with a `clash-mi-rules-<version>.tar.gz` bundle (the three configs, READMEs, scripts) plus a `MANIFEST.txt` with a SHA-256 per file. Before packaging, the tagged revision must pass offline validation (including the OpenClash upload header) and `mihomo -t` on all three configs. Rule-mirror availability is reported separately.
 
 ### Run the checks locally
 

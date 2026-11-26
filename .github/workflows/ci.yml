@@ -7,17 +7,20 @@ on:
       - '*.yaml'
       - 'scripts/**'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/release.yml'
   pull_request:
     branches: [ master ]
     paths:
       - '*.yaml'
       - 'scripts/**'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/release.yml'
   schedule:
     # nightly rule-source availability check so a silently-broken mirror
     # (e.g. gh-proxy.com outage) surfaces even without a code change.
     - cron: '17 3 * * *'
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   validate:
@@ -59,6 +62,9 @@ jobs:
         run: bash scripts/mihomo_test.sh --bin "$PWD/bin/mihomo"
 
   rules-check:
+    # Tags call this workflow to validate their configs; mirror availability
+    # stays a separate check on master, pull requests and the nightly run.
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     name: Rule URL availability
     runs-on: ubuntu-latest
     timeout-minutes: 15

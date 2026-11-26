@@ -92,7 +92,7 @@ nameserver:
 ### 业务分流组(31)
 
 - **AI(5)**:ChatGPT / Claude / Gemini / Grok(xAI:grok.com、x.ai)/ 其他AI(Groq、Copilot、Meta AI、Perplexity…)
-  - **Claude**:现已包含完整官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32)及 AS399358。可选共享遥测规则(sentry.io、intercom、datadog、statsigapi.net)已文档化但默认注释，以免影响其他服务。
+  - **Claude**:现已包含完整官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32)及 AS399358。可选共享遥测规则(cdn.usefathom.com、sentry.io、intercom、datadog、statsigapi.net)已文档化但默认注释，以免影响其他服务。
 - **独立站点(2)**:GitHub / LinuxDo
 - **社交(8)**:X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
 - **流媒体(4)**:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Amazon、Crunchyroll、Popcorn…)
@@ -158,7 +158,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(三份配置 + README + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。每个发布都先过一遍 CI 校验门槛。
+会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(三份配置 + README + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。打包前，标签对应的三份配置必须通过离线校验（含 OpenClash 上传文件头）和 `mihomo -t` 内核测试；外部规则镜像可用性单独报告。
 
 ### 本地跑校验
 
