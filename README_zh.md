@@ -16,11 +16,11 @@
 
 | 文件 | 说明 |
 |------|------|
-| `clash-mi-detail.yaml` | 通用配置(手机/电脑等任意 ClashMi/Mihomo 客户端),含华南理工校园网保护 |
+| `clash-mi-detail.yaml` | 通用配置(手机/电脑等任意 ClashMi/Mihomo 客户端),含校园网认证保护 |
 | `openclash.yaml` | **Cudy 日常使用**(不承担校园网出口节点)。基于 `clash-mi-detail.yaml` + 关闭 IPv6 + `router_self_proxy=0` |
 | `openclash-backnode.yaml` | **Cudy 校园网出口节点**。即 `openclash.yaml` + 监听 `127.0.0.1:10443` 的 VLESS WebSocket listener(配合 Cloudflare Tunnel) |
 
-### 华南理工校园网适配(三份均含)
+### 校园网认证适配(三份均含)
 
 三份配置都将校园网认证 Portal 与联网探测域名排除出代理(最高优先级 `直连` 规则):
 
@@ -29,7 +29,7 @@
 
 这些 Portal / 联网探测条目(MIUI / MSFT 连通性检测)在任何普通网络环境都安全保留——它们仅把已知探测域名排除出代理,不会破坏正常联网。
 
-Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要求 OpenClash UCI 设 `router_self_proxy=0`,避免路由器本机的 `scut_portal_login.sh` 和系统流量被透明代理。
+Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要求 OpenClash UCI 设 `router_self_proxy=0`,避免路由器本机的 校园网自动登录脚本 和系统流量被透明代理。
 
 #### 可移植原则
 
@@ -41,9 +41,9 @@ Cudy/OpenClash 两版额外将顶层 `ipv6` 与 `dns.ipv6` 设为 `false`,并要
 
 > **OpenClash 运行时注意**:若源 YAML 已无 `dhcp://apclix0`,但 `/etc/openclash/openclash.yaml` 启动后仍自动出现 `dhcp://"apclix0"`(或其它 WAN DNS),那是 **OpenClash 自身启动阶段自动追加 WAN/DHCP DNS**,不是仓库 YAML 能解决的问题。请在 OpenClash 设置中关闭 “DNS 覆写 / 追加 WAN DNS ”,否则循环会在运行时被重新注入。
 
-#### 华南理工 · Cudy 接口绑定说明
+#### 校园网 · Cudy 接口绑定说明
 
-本仓库的三份配置**就是** Cudy / SCUT 本地部署配置(公开仓库版本与 Cudy 本地部署是同一个东西,并非两套)。DNS 上游统一写成纯公网 IP,以保持对路由器实际所用 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)的可移植性。
+本仓库的三份配置**就是** Cudy 校园网本地部署配置(公开仓库版本与 Cudy 本地部署是同一个东西,并非两套)。DNS 上游统一写成纯公网 IP,以保持对路由器实际所用 WAN 类型(`eth` / `pppoe` / `wwan` / `usb` / `apcli`)的可移植性。
 
 当部署在 Cudy 上、且实际校园 WAN 出口确实为 `apclix0` 接口时(例如 4G 模块接校园 Wi-Fi AP),可把 DNS 上游绑定到该接口以强制 DNS 走校园 WAN:
 
@@ -55,7 +55,7 @@ nameserver:
 # 如需要,对 default-nameserver / proxy-server-nameserver / direct-nameserver 同样绑定
 ```
 
-为避免日后 3~4 份大配置长期漂移,本仓库**不单独维护**第四份完整 `scut-campus.yaml`;接口绑定按需手工套用即可。
+为避免日后 3~4 份大配置长期漂移,本仓库**不单独维护**第四份完整 `campus.yaml`;接口绑定按需手工套用即可。
 
 > `clash-mi-detail.yaml`(IPv6 开启)的私网直连规则含 IPv6(`::1/128`、`fc00::/7`、`fe80::/10`);两份 OpenClash 全局 IPv6 已关闭,故只保留 IPv4 私网直连。
 

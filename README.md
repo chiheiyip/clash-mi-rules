@@ -18,11 +18,11 @@ A refined, ready-to-use Clash Mi / Mihomo (Clash.Meta) routing configuration wit
 
 | File | Description |
 |------|-------------|
-| `clash-mi-detail.yaml` | General config for any ClashMi/Mihomo client (mobile/desktop). Includes SCUT campus-network protection. |
+| `clash-mi-detail.yaml` | General config for any ClashMi/Mihomo client (mobile/desktop). Includes campus-network portal protection. |
 | `openclash.yaml` | **Cudy daily-use** config (no exit-node). Based on `clash-mi-detail.yaml` + IPv6 off + `router_self_proxy=0`. |
 | `openclash-backnode.yaml` | **Cudy exit-node** config. `openclash.yaml` + VLESS WebSocket listener on `127.0.0.1:10443` (for Cloudflare Tunnel / campus exit). |
 
-### SCUT campus-network protection / 华南理工校园网适配
+### Campus-network portal protection / 校园网认证适配
 
 All three configs exclude the campus authentication portal and network-connectivity probes from proxying (top-priority `直连` rules):
 
@@ -31,7 +31,7 @@ All three configs exclude the campus authentication portal and network-connectiv
 
 These portal/probe entries (Portal, MIUI/MSFT connectivity check) are safe to keep on any normal network — they only exclude known probe domains from proxying and do not break ordinary connectivity.
 
-Cudy/OpenClash variants additionally set top-level `ipv6: false` and `dns.ipv6: false`, and require **OpenClash UCI `router_self_proxy=0`** so the router's own `scut_portal_login.sh` and system traffic are not transparently proxied.
+Cudy/OpenClash variants additionally set top-level `ipv6: false` and `dns.ipv6: false`, and require **OpenClash UCI `router_self_proxy=0`** so the router's own campus auto-login script and system traffic are not transparently proxied.
 
 #### Portability principle / 可移植原则
 
@@ -45,9 +45,9 @@ All three configs keep the DNS upstream **static, explicit and DHCP-recursion-fr
 
 > **OpenClash runtime gotcha:** if `/etc/openclash/openclash.yaml` still shows `dhcp://"apclix0"` (or other WAN DNS) after startup even though the source YAML has none, that is OpenClash itself appending WAN/DHCP DNS during its startup phase. Fix it in **OpenClash settings → disable “DNS override / append WAN DNS”**, not in the source YAML — otherwise the loop keeps being re-injected at runtime.
 
-#### SCUT / Cudy interface binding / 接口绑定说明
+#### Campus / Cudy interface binding / 接口绑定说明
 
-This repository is the SCUT/Cudy deployment itself — the three configs **are** the Cudy/SCUT local-deployment configs, not a separate “local” variant. The DNS upstreams are left as bare public IPs so they stay portable across the WAN type the router actually uses (`eth` / `pppoe` / `wwan` / `usb` / `apcli`).
+This repository is the campus/Cudy deployment itself — the three configs **are** the Cudy campus local-deployment configs, not a separate “local” variant. The DNS upstreams are left as bare public IPs so they stay portable across the WAN type the router actually uses (`eth` / `pppoe` / `wwan` / `usb` / `apcli`).
 
 When you deploy on a Cudy whose campus Wi-Fi WAN egress really is the `apclix0` interface (e.g. a 4G module wired to a campus Wi-Fi AP), you can force DNS out of the campus WAN by binding the upstreams to that interface:
 

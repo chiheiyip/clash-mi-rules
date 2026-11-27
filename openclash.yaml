@@ -106,7 +106,7 @@ external-controller: 0.0.0.0:9090
 secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
 
 # OpenClash 必设: 管理页 配置->DNS/运行 或 UCI 设置 router_self_proxy=0,
-# 避免路由器本机的 scut_portal_login.sh / 联网检测 / 系统流量被透明代理。
+# 避免路由器本机的 校园网自动登录脚本 / 联网检测 / 系统流量被透明代理。
 
 # ========================
 # DNS 设置
@@ -446,7 +446,7 @@ proxy-groups:
 # 规则引擎（rules）
 # ========================
 rules:
-  # ---- 华南理工校园网认证 & 联网检测:最高优先级直连 (Portal/探测不代理) ----
+  # ---- 校园网认证 & 联网检测:最高优先级直连 (Portal/探测不代理) ----
   - DOMAIN,s.scut.edu.cn,直连
   - IP-CIDR,202.38.210.131/32,直连,no-resolve
   - DOMAIN,connect.rom.miui.com,直连
