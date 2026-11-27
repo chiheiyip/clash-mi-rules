@@ -486,6 +486,8 @@ rules:
   # ---- AI ----
 
   - RULE-SET,ChatGPT / Domain,ChatGPT
+  # OpenAI 专属的 Arkose 验证码子域名:跟随 ChatGPT 组,网页与验证码同一出口
+  - DOMAIN,openai-api.arkoselabs.com,ChatGPT
   # ---- Claude Enhanced Rules ----
   # Core Claude domains (精确官方域名)
   - DOMAIN-SUFFIX,anthropic.com,Claude

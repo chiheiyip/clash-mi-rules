@@ -18,6 +18,9 @@ challenges.cloudflare.com     国外|其他
 hcaptcha.com                  国外|其他
 js.hcaptcha.com               国外|其他
 client-api.arkoselabs.com     国外|其他
+# ...but a service's OWN captcha subdomain follows that service (same exit as its pages)
+openai-api.arkoselabs.com     ChatGPT
+github-api.arkoselabs.com     GitHub
 api.funcaptcha.com            国外|其他
 widget.intercom.io            国外|其他   # support-chat widget: must load, not be blocked
 js.intercomcdn.com            国外|其他
