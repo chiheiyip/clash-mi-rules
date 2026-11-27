@@ -71,6 +71,11 @@ jobs:
           gunzip -f bin/mihomo.gz
           chmod +x bin/mihomo
           ./bin/mihomo -v
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML
+        run: pip install pyyaml
       - name: Kernel config test on sanitized copies
         run: bash scripts/mihomo_test.sh --bin "$PWD/bin/mihomo"
 
@@ -90,3 +95,27 @@ jobs:
         run: pip install pyyaml
       - name: Check all rule-provider + health URLs
         run: python3 scripts/check_rules.py
+
+  routing-audit:
+    # Replays the rules against the CURRENT upstream lists and checks
+    # scripts/route_expectations.txt: shared payment / login / CAPTCHA services
+    # must take the general route, LAN stays direct, services hit their groups.
+    # Upstream content changes nightly, so like rules-check it is not tied to tags.
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    name: Routing expectations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Simulate routing for every config
+        run: |
+          set -e
+          for cfg in clash-mi-detail.yaml openclash.yaml openclash-backnode.yaml; do
+            echo "=== $cfg"
+            python3 scripts/audit_routes.py --config "$cfg"
+          done

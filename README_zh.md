@@ -92,7 +92,8 @@ nameserver:
 ### 业务分流组(31)
 
 - **AI(5)**:ChatGPT / Claude / Gemini / Grok(xAI:grok.com、x.ai)/ 其他AI(Groq、Copilot、Meta AI、Perplexity…)
-  - **Claude**:手写官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32)及 AS399358,另加官方 `geosite/anthropic` 规则集(claude.app、claude.dev、ant.dev 等)。可选共享遥测规则(cdn.usefathom.com、sentry.io、intercom、datadog、statsigapi.net)默认保持注释,以免影响其他服务。
+  - **Claude**:手写官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32;不使用 `IP-ASN`,启动无需 ASN 数据库),另加官方 `geosite/anthropic` 规则集(claude.app、claude.dev、ant.dev 等)。可选共享遥测规则(cdn.usefathom.com、sentry.io、intercom、datadog、statsigapi.net)默认保持注释,以免影响其他服务。
+  - **Copilot** 用 7 条手写的 Microsoft Copilot 精确规则,不再使用 blackmatrix7 的 `Copilot.list`:该列表混入了 stripe.com、auth0.com、challenges.cloudflare.com、sentry.io、intercom.io 等大量网站共用的服务,以及 DigitalOcean / Vultr 整个 ASN,导致其他网站的付款和验证码从与网页不同的出口 IP 发出。
   - **Meta AI** 只匹配 `meta.ai` / `ai.meta.com`——`geosite/meta` 会连 Facebook / Instagram / WhatsApp 一起吞掉。
 - **独立站点(2)**:GitHub / LinuxDo
 - **社交(8)**:X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
@@ -114,13 +115,17 @@ nameserver:
 兜底漏斗如下:
 
 ```
-RULE-SET Proxy / Domain,国外      # 明确要加速的海外域名 → 国外
-RULE-SET Direct / Domain,国内     # 已知直连域名 → 国内
-RULE-SET China / Domain,国内      # 中国大陆域名 → 国内
-RULE-SET China / IP,国内          # 大陆 IP → 国内
-RULE-SET Private/ Domain,国内     # 内网 / 保留地址 → 国内
+RULE-SET Block  / Domain,Block    # 未被上面服务规则认领的广告 / 追踪域名
+RULE-SET Direct / Domain,国内     # 已知直连域名(NAS DDNS、PT 站、需校园网 IP 的学术站)→ 国内
+RULE-SET Proxy  / Domain,国外     # 明确要加速的海外域名 → 国外
+RULE-SET China  / Domain,国内     # 中国大陆域名 → 国内
+RULE-SET China  / IP,国内         # 大陆 IP → 国内
 MATCH,其他                        # 其余全部 → 其他
 ```
+
+`Private / Domain`(localhost、`*.local`、Tailscale `ts.net`、路由器管理页等)放在**最前面**,与私网 IP 段一起始终走 `直连`。
+
+支付 / 登录 / 验证码等共用服务(Stripe、PayPal、Auth0、Cloudflare Turnstile、hCaptcha、Arkose、Intercom)刻意**不归入任何服务组**,走通用路线(`国外` / `其他`),与嵌入它们的网页同一出口。CI 每晚用 `scripts/audit_routes.py` 校验这一点。
 
 - **国外**:规则里明确点名要加速的海外域名。
 - **国内**:中国大陆 / 需直连的域名和 IP。
@@ -137,7 +142,7 @@ MATCH,其他                        # 其余全部 → 其他
 - 这是**模板**——使用前必须填入你自己的机场订阅链接。
 - `secret` 是 API 控制器密钥(当前为占位符);若你的实例可被外部访问,务必改成你自己的强密码。
 - `gh-proxy.com` 偶发限流(返回 403),重试或重新加载即可;也可用 `rule-providers` 注释里的 `sed` 命令切到备用镜像。
-- GEO 数据库(GeoIP / ASN)经 `geox-url` 走 `gh-proxy.com` 下载,仅在本地缺失时才下载。`geo-auto-update` 刻意关闭(避免路由器闪存磨损,且 OpenClash 自带更新)。
+- 只有 `clash-mi-detail.yaml` 需要 GEO 数据库(GeoIP mmdb,供 `dns.fallback-filter` 使用),经 `geox-url` 走 `gh-proxy.com` 下载,仅在本地缺失时才下载;两份 OpenClash 配置不需要任何 GEO 数据库。`geo-auto-update` 刻意关闭(避免路由器闪存磨损,且 OpenClash 自带更新)。
 
 ## 开发运维(CI 与发布)
 
@@ -151,6 +156,7 @@ MATCH,其他                        # 其余全部 → 其他
 |------|------|
 | YAML + 一致性 | `scripts/validate.py` —— 解析每个 `*.yaml`,校验必需顶层键、DNS 递归防护(实时配置中不允许 `dhcp://`/`system`/`apclix0`)、可移植性防护(实时代码中不允许写死 `IP#接口`)、rule-provider URL 合法性,以及**三份配置一致性**:两份 OpenClash 配置必须与 `clash-mi-detail.yaml` 逐条规则、逐个策略组一致,只允许已登记的差异(IPv6、DNS fallback、`find-process-mode`、`listeners`) |
 | Mihomo 配置测试 | `scripts/mihomo_test.sh` —— 在**副本**上把机场订阅占位符和安全密钥替换后,对每个配置跑 `mihomo -t`。分别用**固定版本**内核(v1.19.34,失败即阻塞)和**最新版**(仅预警,不阻塞)各跑一次 |
+| 分流预期 | `scripts/audit_routes.py` —— 下载当前上游列表,按规则顺序模拟匹配,校验 `scripts/route_expectations.txt`(共用支付 / 验证码服务走通用路线、内网直连、各服务进各自的组)。上游列表一旦开始误收共用域名就会报错 |
 | 规则 URL 可用性 | `scripts/check_rules.py` —— 并发检查每个 `rule-provider`、`geox-url` 地址及健康探测地址 `gstatic.com/generate_204`,失败会退避重试;只有备用镜像可用时记为警告、不算失败 |
 
 ### 发布(`.github/workflows/release.yml`)
@@ -170,6 +176,7 @@ git push origin v0.1.0
 pip install pyyaml
 python3 scripts/validate.py          # 离线结构检查
 python3 scripts/check_rules.py      # 在线规则 URL 可用性
+python3 scripts/audit_routes.py     # 在线分流模拟,对照 route_expectations.txt
 bash scripts/mihomo_test.sh --bin ./bin/mihomo   # 需一个 mihomo 二进制
 ```
 

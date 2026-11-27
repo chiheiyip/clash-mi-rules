@@ -1,0 +1,93 @@
+# Routing expectations checked by scripts/audit_routes.py (CI, nightly + every change).
+# Format: <domain> <expected group>[|<alternative group>...]   # comment
+#
+# 1) Shared payment / login / CAPTCHA services must take the GENERAL route
+#    (国外 or 其他, both default to 所有-自动), i.e. the same exit as the websites
+#    that embed them. If a service-specific list ever captures one of these,
+#    the site and its CAPTCHA / payment leave from different IPs -> CAPTCHA
+#    loops, payment risk-control. That is exactly what Copilot.list did.
+js.stripe.com                 国外|其他
+api.stripe.com                国外|其他
+checkout.stripe.com           国外|其他
+m.stripe.network              国外|其他
+www.paypal.com                国外|其他
+www.paypalobjects.com         国外|其他
+cdn.auth0.com                 国外|其他
+example.us.auth0.com          国外|其他
+challenges.cloudflare.com     国外|其他
+hcaptcha.com                  国外|其他
+js.hcaptcha.com               国外|其他
+client-api.arkoselabs.com     国外|其他
+api.funcaptcha.com            国外|其他
+widget.intercom.io            国外|其他   # support-chat widget: must load, not be blocked
+js.intercomcdn.com            国外|其他
+featuregates.org              国外|其他   # Statsig feature flags: must load
+# reCAPTCHA is served from google.com as well, so it shares the Google group
+www.recaptcha.net             Google
+
+# 2) LAN / home / campus: always direct
+localhost                     直连
+nas.local                     直连
+node.ts.net                   直连        # Tailscale MagicDNS
+router.asus.com               直连
+s.scut.edu.cn                 直连        # campus portal
+connect.rom.miui.com          直连
+www.msftconnecttest.com       直连
+mycloud.myds.me               国内        # Synology DDNS
+www.sciencedirect.com         国内        # campus-IP licensed full text
+www.elsevier.com              国内
+www.cnki.net                  国内
+
+# 3) China-side downloads: direct, not through the airport
+cn.bing.com                   国内
+download.windowsupdate.com    国内
+dl.delivery.mp.microsoft.com  国内
+iosapps.itunes.apple.com      国内
+updates.cdn-apple.com         国内
+www.amazon.cn                 国内
+
+# 4) Service groups
+chatgpt.com                   ChatGPT
+claude.ai                     Claude
+api.anthropic.com             Claude
+gemini.google.com             Gemini
+aistudio.google.com           Gemini
+grok.com                      Grok
+meta.ai                       其他AI
+copilot.microsoft.com         其他AI
+www.perplexity.ai             其他AI
+github.com                    GitHub
+linux.do                      LinuxDo
+x.com                         X
+instagram.com                 Instagram   # must not be captured by an AI list
+facebook.com                  Facebook
+web.whatsapp.com              WhatsApp
+telegram.org                  Telegram
+www.tiktok.com                TikTok
+discord.com                   Discord
+www.reddit.com                Reddit
+www.netflix.com               Netflix
+www.youtube.com               YouTube
+open.spotify.com              Spotify
+www.disneyplus.com            Stream Media
+www.primevideo.com            Stream Media
+www.google.com                Google
+www.bing.com                  Microsoft   # Bing search is not Copilot
+login.microsoftonline.com     Microsoft
+www.icloud.com                Apple
+www.nvidia.com                Nvidia
+www.adobe.com                 Cloud
+store.steampowered.com        Games
+battle.net                    Games
+conntest.nintendowifi.net     Games
+www.okx.com                   Crypto
+www.binance.com               Crypto
+www.speedtest.net             Test
+
+# 5) Mainland sites direct, generic foreign sites via the general route
+www.baidu.com                 国内
+www.bilibili.com              国内
+www.taobao.com                国内
+mp.weixin.qq.com              国内
+www.wikipedia.org             国外|其他
+www.bbc.com                   国外|其他

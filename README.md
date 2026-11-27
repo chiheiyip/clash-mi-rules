@@ -97,7 +97,8 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 ### Business Groups / 业务分流组 (31)
 
 - **AI (5)**: ChatGPT / Claude / Gemini / Grok (xAI: grok.com, x.ai) / 其他AI (Groq, Copilot, Meta AI, Perplexity…)
-  - **Claude**: hand-written official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32) and AS399358, plus the official `geosite/anthropic` set (claude.app, claude.dev, ant.dev…). Optional shared telemetry rules (cdn.usefathom.com, sentry.io, intercom, datadog, statsigapi.net) stay commented out by default to avoid affecting other services.
+  - **Claude**: hand-written official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32; no `IP-ASN` rule, so startup needs no ASN database), plus the official `geosite/anthropic` set (claude.app, claude.dev, ant.dev…). Optional shared telemetry rules (cdn.usefathom.com, sentry.io, intercom, datadog, statsigapi.net) stay commented out by default to avoid affecting other services.
+  - **Copilot** uses 7 hand-written Microsoft Copilot rules. blackmatrix7's `Copilot.list` is not used: it bundles services shared by countless websites (stripe.com, auth0.com, challenges.cloudflare.com, sentry.io, intercom.io …) plus the whole DigitalOcean / Vultr ASNs, which sent other sites' payments and CAPTCHAs out through a different exit IP than the page itself.
   - **Meta AI** matches only `meta.ai` / `ai.meta.com` — `geosite/meta` would also capture Facebook / Instagram / WhatsApp.
 - **Standalone (2)**: GitHub / LinuxDo
 - **Social (8)**: X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
@@ -119,13 +120,17 @@ Rules match top-down (first match wins). Before the service groups, a **CN-subse
 The fallback funnel:
 
 ```
-RULE-SET Proxy / Domain,国外      # well-known accelerated foreign domains → 国外
-RULE-SET Direct / Domain,国内     # known direct domains → 国内
-RULE-SET China / Domain,国内      # mainland China domains → 国内
-RULE-SET China / IP,国内          # mainland IPs → 国内
-RULE-SET Private/ Domain,国内     # LAN / reserved → 国内
+RULE-SET Block  / Domain,Block    # ads / trackers not claimed by a service rule above
+RULE-SET Direct / Domain,国内     # known direct domains (NAS DDNS, PT sites, campus-licensed academic sites) → 国内
+RULE-SET Proxy  / Domain,国外     # well-known accelerated foreign domains → 国外
+RULE-SET China  / Domain,国内     # mainland China domains → 国内
+RULE-SET China  / IP,国内         # mainland IPs → 国内
 MATCH,其他                        # everything else → 其他
 ```
+
+`Private / Domain` (localhost, `*.local`, Tailscale `ts.net`, router admin pages) sits at the **very top** with the private IP ranges and always goes `直连`.
+
+Shared payment / login / CAPTCHA services (Stripe, PayPal, Auth0, Cloudflare Turnstile, hCaptcha, Arkose, Intercom) are deliberately **not** claimed by any service group: they take the general route (`国外` / `其他`), i.e. the same exit as the website embedding them. CI enforces this nightly (`scripts/audit_routes.py`).
 
 - **国外 (Overseas)**: foreign domains explicitly listed for acceleration.
 - **国内 (Domestic)**: mainland China / direct-connect domains & IPs.
@@ -142,7 +147,7 @@ All providers are fetched via `gh-proxy.com` (China GitHub mirror) from:
 - This is a **template** — you must fill in your own airport subscription URL before use.
 - `secret` is the API controller secret (currently a placeholder); change it to your own strong password if your instance is reachable externally.
 - Rule-set URLs may occasionally be rate-limited by `gh-proxy.com` (403). Retry or reload to resolve, or switch to the backup mirror with the `sed` command in the `rule-providers` comment.
-- GEO databases (GeoIP / ASN) are downloaded through `gh-proxy.com` via `geox-url`, only when missing locally. `geo-auto-update` is intentionally off (flash wear on routers; OpenClash has its own updater).
+- Only `clash-mi-detail.yaml` needs a GEO database (GeoIP mmdb, for `dns.fallback-filter`); it is downloaded through `gh-proxy.com` via `geox-url`, only when missing locally. The OpenClash configs need none. `geo-auto-update` is intentionally off (flash wear on routers; OpenClash has its own updater).
 
 ## Development / 开发运维 (CI & Releases)
 
@@ -156,6 +161,7 @@ Runs on every `push`/`PR` touching the configs or scripts, and on a **nightly sc
 |-------|--------------|
 | YAML + consistency | `scripts/validate.py` — parse every `*.yaml`, verify required top-level keys, DNS recursion guard (no `dhcp://`/`system`/`apclix0` in live config), portability guard (no hard-coded `IP#interface` binding in live code), rule-provider URL sanity, and **three-config parity**: the OpenClash configs must match `clash-mi-detail.yaml` rule by rule and group by group except for the documented differences (IPv6, DNS fallback, `find-process-mode`, `listeners`) |
 | Mihomo config test | `scripts/mihomo_test.sh` — substitutes the airport-subscription placeholder + a safe secret on a **copy** and runs `mihomo -t` on each config. Runs against the **pinned** kernel (v1.19.34, blocking) and the **latest** release (non-blocking early warning) |
+| Routing expectations | `scripts/audit_routes.py` — downloads the current upstream lists, replays the rules top-down and checks `scripts/route_expectations.txt` (shared payment / CAPTCHA services on the general route, LAN direct, every service in its group). Catches upstream lists that start capturing shared domains |
 | Rule URL availability | `scripts/check_rules.py` — concurrently checks every `rule-provider` and `geox-url` URL + the health probe `gstatic.com/generate_204`, retrying with backoff; a URL that only works on the backup mirror is a warning, not a failure |
 
 ### Release (`.github/workflows/release.yml`)
@@ -175,6 +181,7 @@ A GitHub Release is created with a `clash-mi-rules-<version>.tar.gz` bundle (the
 pip install pyyaml
 python3 scripts/validate.py          # offline structural checks
 python3 scripts/check_rules.py      # online rule-URL availability
+python3 scripts/audit_routes.py     # online routing simulation vs route_expectations.txt
 bash scripts/mihomo_test.sh --bin ./bin/mihomo   # needs a mihomo binary
 ```
 

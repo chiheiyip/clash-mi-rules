@@ -39,25 +39,18 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# GeoSite.dat is deliberately NOT pre-provided: no config references geosite
-# any more (fake-ip-filter uses rule-set:China / Domain), and the test should
-# prove that. The GeoIP mmdb (dns.fallback-filter) and ASN database (IP-ASN)
-# are still provided up front so the test does not depend on mirror uptime.
+# GEO databases: each config runs in its own empty home directory, and the
+# sanitized copy points geox-url at an unreachable address. A config that
+# silently needs a database it was not given therefore FAILS instead of
+# downloading it. Only configs that use GeoIP (dns.fallback-filter.geoip)
+# receive the GeoIP mmdb; the OpenClash configs must start with none at all.
+GEOIP_SRC="$TMP/GeoIP.metadb.src"
 if [[ -n "${GEOIP_DAT:-}" ]]; then
-  cp "$GEOIP_DAT" "$TMP/GeoIP.metadb"
+  cp "$GEOIP_DAT" "$GEOIP_SRC"
 else
   curl -fsSL \
     "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" \
-    -o "$TMP/GeoIP.metadb"
-fi
-
-# The Claude IP-ASN rule also needs the ASN database at parse time.
-if [[ -n "${ASN_MMDB:-}" ]]; then
-  cp "$ASN_MMDB" "$TMP/ASN.mmdb"
-else
-  curl -fsSL \
-    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb" \
-    -o "$TMP/ASN.mmdb"
+    -o "$GEOIP_SRC"
 fi
 
 fail=0
@@ -76,12 +69,22 @@ txt = open(src, encoding="utf-8").read()
 txt = txt.replace("机场A订阅地址", "https://example.com/clash-mi-rules-ci/sub-a.yaml")
 txt = txt.replace("机场B订阅地址", "https://example.com/clash-mi-rules-ci/sub-b.yaml")
 txt = txt.replace("CHANGE_ME_TO_A_LONG_RANDOM_SECRET", "ci-sanitized-secret-please-ignore")
+# Any GEO download attempt must fail fast (see the note above).
+txt = txt.replace("https://gh-proxy.com/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/",
+                  "http://127.0.0.1:9/geo-download-blocked-in-test/")
 open(out, "w", encoding="utf-8").write(txt)
 PY
+  home="$TMP/home-$base"
+  mkdir -p "$home"
+  needs_geoip="$(python3 -c 'import sys,yaml; d=yaml.safe_load(open(sys.argv[1],encoding="utf-8")); print("yes" if ((d.get("dns") or {}).get("fallback-filter") or {}).get("geoip") else "no")' "$out")"
+  if [[ "$needs_geoip" == "yes" ]]; then
+    cp "$GEOIP_SRC" "$home/GeoIP.metadb"
+  fi
+  echo "[geo   ] $base: GeoIP mmdb provided=$needs_geoip, everything else absent"
   ran=$((ran+1))
   echo "=== mihomo -t : $base ==="
   log="$TMP/${base}.log"
-  if "$BIN" -t -d "$TMP" -f "$out" >"$log" 2>&1; then
+  if "$BIN" -t -d "$home" -f "$out" >"$log" 2>&1; then
     echo "[ok    ] $base"
   else
     echo "[BAD   ] $base"
