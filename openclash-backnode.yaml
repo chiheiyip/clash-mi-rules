@@ -170,7 +170,8 @@ dns:
   fake-ip-filter:
     - +.lan
     - +.local
-    - geosite:cn
+    # 复用 China / Domain 规则集(与 geosite:cn 同源),无需额外下载 GeoSite.dat
+    - rule-set:China / Domain
     - s.scut.edu.cn
     - connect.rom.miui.com
     - +.msftconnecttest.com
@@ -181,6 +182,8 @@ ipv6: false
 # ========================
 # TUN 模块
 # ========================
+# OpenClash 按自身“运行模式”(兼容 / TUN / 混合)管理 TUN,切换请在 OpenClash 界面操作,
+# 不要只改这里。
 tun:
   enable: true
   stack: gvisor
@@ -194,6 +197,19 @@ tun:
 profile:
   store-selected: true
   store-fake-ip: true
+
+# ========================
+# GEO 数据库下载地址
+# ========================
+# Mihomo 默认从 github.com 下载,国内首次启动(尚无代理可用)时可能下载失败导致无法启动;
+# 这里统一改走 gh-proxy 镜像。只在本地缺少数据库时才会下载。
+# 本配置用到: ASN(Claude 的 IP-ASN 规则)、GeoIP mmdb(通用版 dns.fallback-filter)。
+# 不开启 geo-auto-update: 路由器上每天重写约 20MB 闪存,且 OpenClash 自带更新。
+geox-url:
+  geoip: "https://gh-proxy.com/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
+  geosite: "https://gh-proxy.com/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+  mmdb: "https://gh-proxy.com/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
+  asn: "https://gh-proxy.com/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
 
 # ========================
 # 策略组定义
