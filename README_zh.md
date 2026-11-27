@@ -10,7 +10,7 @@
 - ✅ **稳定的策略**:`url-test` + `fallback`,不使用实验性的 `smart`/LightGBM,任意 Mihomo 内核(含 Clash Mi)都可稳定运行。
 - ✅ **自动优选节点**:每个地区组包含 `手动` + `自动(url-test 测速)` + `故转(fallback 故障转移)` 三层。
 - ✅ **更新的规则来源**:只用 `metacubex/meta-rules-dat`(`.mrs`)和 `blackmatrix7/ios_rule_script`(`.list`),不依赖个人维护的旧列表。
-- ✅ **所有规则集 URL 已验证**(HTTP 200)。
+- ✅ **规则集 URL 由 CI 每晚检查**(带重试与备用镜像)。
 
 ## 文件
 
@@ -92,10 +92,11 @@ nameserver:
 ### 业务分流组(31)
 
 - **AI(5)**:ChatGPT / Claude / Gemini / Grok(xAI:grok.com、x.ai)/ 其他AI(Groq、Copilot、Meta AI、Perplexity…)
-  - **Claude**:现已包含完整官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32)及 AS399358。可选共享遥测规则(cdn.usefathom.com、sentry.io、intercom、datadog、statsigapi.net)已文档化但默认注释，以免影响其他服务。
+  - **Claude**:手写官方域名(anthropic.com、claude.ai、claude.com、clau.de、claudemcpclient.com、claudeusercontent.com、CDN 端点、Auth0)、IP 段(160.79.104.0/21、2607:6bc0::/32)及 AS399358,另加官方 `geosite/anthropic` 规则集(claude.app、claude.dev、ant.dev 等)。可选共享遥测规则(cdn.usefathom.com、sentry.io、intercom、datadog、statsigapi.net)默认保持注释,以免影响其他服务。
+  - **Meta AI** 只匹配 `meta.ai` / `ai.meta.com`——`geosite/meta` 会连 Facebook / Instagram / WhatsApp 一起吞掉。
 - **独立站点(2)**:GitHub / LinuxDo
 - **社交(8)**:X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
-- **流媒体(4)**:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Amazon、Crunchyroll、Popcorn…)
+- **流媒体(4)**:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Prime Video、Crunchyroll、Popcorn…)
 - **云与系统(5)**:Google / Microsoft / Apple / Nvidia / Cloud(Adobe…)
 - **游戏(1)**:Games(Steam、Epic、EA、Blizzard、UBI、PlayStation、Nintendo…)
 - **Crypto(1)**:Crypto(OKX、Bybit、Binance、Kraken、Bybit EU、Ether.fi、Trading 212、Monese、Myfin、Altery…)
@@ -108,7 +109,9 @@ nameserver:
 
 ## 分流顺序
 
-规则自上而下匹配(命中即停)。兜底漏斗如下:
+规则自上而下匹配(命中即停)。在各服务组之前有一段**国内子集**:微软 / 苹果 / Steam / 亚马逊的中国域名(`microsoft@cn`、`apple@cn`、`apple-cn`、`steam@cn`、`amazon@cn`)走 `国内`,Windows / 苹果更新和 Steam 国内 CDN 不消耗代理流量。
+
+兜底漏斗如下:
 
 ```
 RULE-SET Proxy / Domain,国外      # 明确要加速的海外域名 → 国外
@@ -133,7 +136,8 @@ MATCH,其他                        # 其余全部 → 其他
 
 - 这是**模板**——使用前必须填入你自己的机场订阅链接。
 - `secret` 是 API 控制器密钥(当前为占位符);若你的实例可被外部访问,务必改成你自己的强密码。
-- `gh-proxy.com` 偶发限流(返回 403),重试或重新加载即可。
+- `gh-proxy.com` 偶发限流(返回 403),重试或重新加载即可;也可用 `rule-providers` 注释里的 `sed` 命令切到备用镜像。
+- GEO 数据库(GeoIP / ASN)经 `geox-url` 走 `gh-proxy.com` 下载,仅在本地缺失时才下载。`geo-auto-update` 刻意关闭(避免路由器闪存磨损,且 OpenClash 自带更新)。
 
 ## 开发运维(CI 与发布)
 
@@ -145,9 +149,9 @@ MATCH,其他                        # 其余全部 → 其他
 
 | 检查 | 作用 |
 |------|------|
-| YAML + 一致性 | `scripts/validate.py` —— 解析每个 `*.yaml`,校验必需顶层键、DNS 递归防护(实时配置中不允许 `dhcp://`/`system`/`apclix0`)、可移植性防护(实时代码中不允许写死 `IP#接口`)、rule-provider URL 合法性 |
-| Mihomo 配置测试 | `scripts/mihomo_test.sh` —— 拉取官方 `mihomo` 二进制,在**副本**上把机场订阅占位符和安全密钥替换后,对每个配置跑 `mihomo -t` |
-| 规则 URL 可用性 | `scripts/check_rules.py` —— 并发 HEAD/GET 每个 `rule-provider` URL 及健康探测地址 `gstatic.com/generate_204` |
+| YAML + 一致性 | `scripts/validate.py` —— 解析每个 `*.yaml`,校验必需顶层键、DNS 递归防护(实时配置中不允许 `dhcp://`/`system`/`apclix0`)、可移植性防护(实时代码中不允许写死 `IP#接口`)、rule-provider URL 合法性,以及**三份配置一致性**:两份 OpenClash 配置必须与 `clash-mi-detail.yaml` 逐条规则、逐个策略组一致,只允许已登记的差异(IPv6、DNS fallback、`find-process-mode`、`listeners`) |
+| Mihomo 配置测试 | `scripts/mihomo_test.sh` —— 在**副本**上把机场订阅占位符和安全密钥替换后,对每个配置跑 `mihomo -t`。分别用**固定版本**内核(v1.19.34,失败即阻塞)和**最新版**(仅预警,不阻塞)各跑一次 |
+| 规则 URL 可用性 | `scripts/check_rules.py` —— 并发检查每个 `rule-provider`、`geox-url` 地址及健康探测地址 `gstatic.com/generate_204`,失败会退避重试;只有备用镜像可用时记为警告、不算失败 |
 
 ### 发布(`.github/workflows/release.yml`)
 
@@ -158,7 +162,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(三份配置 + README + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。打包前，标签对应的三份配置必须通过离线校验（含 OpenClash 上传文件头）和 `mihomo -t` 内核测试；外部规则镜像可用性单独报告。
+会生成一个 GitHub Release,附带 `clash-mi-rules-<版本>.tar.gz`(三份配置 + README + CHANGELOG + 脚本)和每文件 SHA-256 的 `MANIFEST.txt`。打包前，标签对应的三份配置必须通过离线校验（含 OpenClash 上传文件头）和 `mihomo -t` 内核测试；外部规则镜像可用性单独报告。
 
 ### 本地跑校验
 

@@ -12,7 +12,7 @@ A refined, ready-to-use Clash Mi / Mihomo (Clash.Meta) routing configuration wit
 - ✅ **Stable strategy**: `url-test` + `fallback`, no experimental `smart`/LightGBM — reliable on any Mihomo kernel (Clash Mi included).
 - ✅ **Auto node preference**: per-country groups with `手动 (manual) + 自动 (auto url-test) + 故转 (failover fallback)`.
 - ✅ **Fresh rule sources**: only `metacubex/meta-rules-dat` (`.mrs`) and `blackmatrix7/ios_rule_script` (`.list`); no unmaintained personal lists.
-- ✅ **All rule-set URLs verified** (HTTP 200).
+- ✅ **Rule-set URLs checked nightly in CI** (with retry and a backup mirror).
 
 ## Files / 文件
 
@@ -97,10 +97,11 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 ### Business Groups / 业务分流组 (31)
 
 - **AI (5)**: ChatGPT / Claude / Gemini / Grok (xAI: grok.com, x.ai) / 其他AI (Groq, Copilot, Meta AI, Perplexity…)
-  - **Claude**: Now includes comprehensive official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32), and AS399358. Optional shared telemetry rules (cdn.usefathom.com, sentry.io, intercom, datadog, statsigapi.net) are documented but commented out by default to avoid affecting other services.
+  - **Claude**: hand-written official domains (anthropic.com, claude.ai, claude.com, clau.de, claudemcpclient.com, claudeusercontent.com, CDN endpoints, Auth0), IP ranges (160.79.104.0/21, 2607:6bc0::/32) and AS399358, plus the official `geosite/anthropic` set (claude.app, claude.dev, ant.dev…). Optional shared telemetry rules (cdn.usefathom.com, sentry.io, intercom, datadog, statsigapi.net) stay commented out by default to avoid affecting other services.
+  - **Meta AI** matches only `meta.ai` / `ai.meta.com` — `geosite/meta` would also capture Facebook / Instagram / WhatsApp.
 - **Standalone (2)**: GitHub / LinuxDo
 - **Social (8)**: X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
-- **Streaming (4)**: Netflix / YouTube / Spotify / Stream Media (Disney, HBO, Amazon, Crunchyroll, Popcorn…)
+- **Streaming (4)**: Netflix / YouTube / Spotify / Stream Media (Disney, HBO, Prime Video, Crunchyroll, Popcorn…)
 - **Cloud & System (5)**: Google / Microsoft / Apple / Nvidia / Cloud (Adobe…)
 - **Gaming (1)**: Games (Steam, Epic, EA, Blizzard, UBI, PlayStation, Nintendo…)
 - **Crypto (1)**: Crypto (OKX, Bybit, Binance, Kraken, Bybit EU, Ether.fi, Trading 212, Monese, Myfin, Altery…)
@@ -113,7 +114,9 @@ This config is built for **Clash Mi** (a Clash/Mihomo GUI client). Get it here:
 
 ## Routing Order / 分流顺序
 
-Rules match top-down (first match wins). The fallback funnel:
+Rules match top-down (first match wins). Before the service groups, a **CN-subset** block sends the China-side domains of Microsoft / Apple / Steam / Amazon (`microsoft@cn`, `apple@cn`, `apple-cn`, `steam@cn`, `amazon@cn`) to `国内`, so Windows / Apple updates and Steam's China CDN do not consume proxy traffic.
+
+The fallback funnel:
 
 ```
 RULE-SET Proxy / Domain,国外      # well-known accelerated foreign domains → 国外
@@ -138,7 +141,8 @@ All providers are fetched via `gh-proxy.com` (China GitHub mirror) from:
 
 - This is a **template** — you must fill in your own airport subscription URL before use.
 - `secret` is the API controller secret (currently a placeholder); change it to your own strong password if your instance is reachable externally.
-- Rule-set URLs may occasionally be rate-limited by `gh-proxy.com` (403). Retry or reload to resolve.
+- Rule-set URLs may occasionally be rate-limited by `gh-proxy.com` (403). Retry or reload to resolve, or switch to the backup mirror with the `sed` command in the `rule-providers` comment.
+- GEO databases (GeoIP / ASN) are downloaded through `gh-proxy.com` via `geox-url`, only when missing locally. `geo-auto-update` is intentionally off (flash wear on routers; OpenClash has its own updater).
 
 ## Development / 开发运维 (CI & Releases)
 
@@ -150,9 +154,9 @@ Runs on every `push`/`PR` touching the configs or scripts, and on a **nightly sc
 
 | Check | What it does |
 |-------|--------------|
-| YAML + consistency | `scripts/validate.py` — parse every `*.yaml`, verify required top-level keys, DNS recursion guard (no `dhcp://`/`system`/`apclix0` in live config), portability guard (no hard-coded `IP#interface` binding in live code), rule-provider URL sanity |
-| Mihomo config test | `scripts/mihomo_test.sh` — fetches the official `mihomo` binary, substitutes the airport-subscription placeholder + a safe secret on a **copy**, runs `mihomo -t` on each config |
-| Rule URL availability | `scripts/check_rules.py` — concurrently HEAD/GET every `rule-provider` URL + the health probe `gstatic.com/generate_204` |
+| YAML + consistency | `scripts/validate.py` — parse every `*.yaml`, verify required top-level keys, DNS recursion guard (no `dhcp://`/`system`/`apclix0` in live config), portability guard (no hard-coded `IP#interface` binding in live code), rule-provider URL sanity, and **three-config parity**: the OpenClash configs must match `clash-mi-detail.yaml` rule by rule and group by group except for the documented differences (IPv6, DNS fallback, `find-process-mode`, `listeners`) |
+| Mihomo config test | `scripts/mihomo_test.sh` — substitutes the airport-subscription placeholder + a safe secret on a **copy** and runs `mihomo -t` on each config. Runs against the **pinned** kernel (v1.19.34, blocking) and the **latest** release (non-blocking early warning) |
+| Rule URL availability | `scripts/check_rules.py` — concurrently checks every `rule-provider` and `geox-url` URL + the health probe `gstatic.com/generate_204`, retrying with backoff; a URL that only works on the backup mirror is a warning, not a failure |
 
 ### Release (`.github/workflows/release.yml`)
 
@@ -163,7 +167,7 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-A GitHub Release is created with a `clash-mi-rules-<version>.tar.gz` bundle (the three configs, READMEs, scripts) plus a `MANIFEST.txt` with a SHA-256 per file. Before packaging, the tagged revision must pass offline validation (including the OpenClash upload header) and `mihomo -t` on all three configs. Rule-mirror availability is reported separately.
+A GitHub Release is created with a `clash-mi-rules-<version>.tar.gz` bundle (the three configs, READMEs, CHANGELOG, scripts) plus a `MANIFEST.txt` with a SHA-256 per file. Before packaging, the tagged revision must pass offline validation (including the OpenClash upload header) and `mihomo -t` on all three configs. Rule-mirror availability is reported separately.
 
 ### Run the checks locally
 

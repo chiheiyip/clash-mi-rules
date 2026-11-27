@@ -24,7 +24,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
           DEST="$STAGE/$PKG"
           mkdir -p "$DEST"
           cp clash-mi-detail.yaml openclash.yaml openclash-backnode.yaml "$DEST/"
-          cp README.md README_zh.md "$DEST/"
+          cp README.md README_zh.md CHANGELOG.md "$DEST/"
           cp -r scripts "$DEST/scripts"
           # generate a manifest so a release is self-describing and diffable
           {
@@ -64,7 +64,7 @@ jobs:
           echo "checksum=$RUNNER_TEMP/clash-mi-rules-${VERSION}.tar.gz.sha256" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: clash-mi-rules ${{ github.ref_name }}
