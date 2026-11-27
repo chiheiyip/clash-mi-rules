@@ -203,7 +203,7 @@ profile:
 # ========================
 # Mihomo 默认从 github.com 下载,国内首次启动(尚无代理可用)时可能下载失败导致无法启动;
 # 这里统一改走 gh-proxy 镜像。只在本地缺少数据库时才会下载。
-# 本配置用到: ASN(Claude 的 IP-ASN 规则)、GeoIP mmdb(通用版 dns.fallback-filter)。
+# 只有通用版的 dns.fallback-filter 用到 GeoIP mmdb;两份 OpenClash 配置启动时不需要任何 GEO 数据库。
 # 不开启 geo-auto-update: 路由器上每天重写约 20MB 闪存,且 OpenClash 自带更新。
 geox-url:
   geoip: "https://gh-proxy.com/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
@@ -500,6 +500,8 @@ rules:
   - IP-CIDR,100.64.0.0/10,直连,no-resolve
   - IP-CIDR,127.0.0.0/8,直连,no-resolve
   - IP-CIDR,169.254.0.0/16,直连,no-resolve
+  # 内网 / 保留域名(localhost、*.local、Tailscale ts.net、路由器管理页等):放在最前,始终直连
+  - RULE-SET,Private / Domain,直连
   # ---- AI ----
 
   - RULE-SET,ChatGPT / Domain,ChatGPT
@@ -518,7 +520,8 @@ rules:
   # Claude IP ranges (AS399358 Anthropic)
   - IP-CIDR,160.79.104.0/21,Claude,no-resolve
   - IP-CIDR6,2607:6bc0::/32,Claude,no-resolve
-  - IP-ASN,399358,Claude,no-resolve
+  # 不使用 IP-ASN,399358:它让内核启动依赖 ASN 数据库下载(镜像故障即无法启动)。
+  # 上面两段为 Anthropic 公布的地址段;本组规则都带 no-resolve,只影响直接按 IP 发起的连接。
   # Optional: Shared telemetry services (可选规则段 - 共享服务有副作用)
   # 以下域名/关键词被多个互联网服务共享，启用可能影响其他网站
   # 建议：仅当 Claude 出现连接问题且确认需要时才取消注释
@@ -540,7 +543,18 @@ rules:
   # Meta AI 只配 meta.ai:geosite/meta 含 facebook/instagram/whatsapp,放在社交规则前会吞掉这三个组
   - DOMAIN-SUFFIX,meta.ai,其他AI
   - DOMAIN,ai.meta.com,其他AI
-  - RULE-SET,Copilot / Domain,其他AI
+  # Microsoft Copilot:手写精确域名,不用 blackmatrix7 的 Copilot.list。
+  # 那个列表混入了 stripe.com / auth0.com / challenges.cloudflare.com / sentry.io / intercom.io 等
+  # 大量网站共用的支付、登录、验证码服务,以及 DigitalOcean、Vultr 整个 ASN,会让其他网站的
+  # 付款和验证码改走 其他AI 的节点(与网页出口 IP 不一致 → 验证码过不去 / 支付风控)。
+  # 共用服务一律留给通用规则处理;CI 的 scripts/audit_routes.py 每晚校验这一点。
+  - DOMAIN,copilot.microsoft.com,其他AI
+  - DOMAIN,sydney.bing.com,其他AI
+  - DOMAIN-SUFFIX,edgeservices.bing.com,其他AI
+  - DOMAIN,services.bingapis.com,其他AI
+  - DOMAIN,gateway.bingviz.microsoft.net,其他AI
+  - DOMAIN,gateway.bingviz.microsoftapp.net,其他AI
+  - DOMAIN-SUFFIX,api.microsoftapp.net,其他AI
   - RULE-SET,Perplexity / Domain,其他AI
 
   # ---- GitHub / LinuxDo ----
@@ -636,13 +650,20 @@ rules:
   - DOMAIN-SUFFIX,api-ip.com,Test
   - DOMAIN-SUFFIX,myip.wtf,Test
   - DOMAIN-SUFFIX,ipinfo.cc,Test
+  # 功能性共用服务放行:Advertising.list 会拦截它们,但拦了会坏功能(此前因被 Copilot.list
+  # 误收而一直可用)。Intercom = 网站客服聊天窗口,featuregates.org = Statsig 功能开关。
+  # 走通用规则 国外,与嵌入它们的网页出口一致。纯统计 / 埋点(sentry、segment 等)照常拦截。
+  - DOMAIN-SUFFIX,intercom.io,国外
+  - DOMAIN-SUFFIX,intercomcdn.com,国外
+  - DOMAIN-SUFFIX,featuregates.org,国外
   - RULE-SET,Block / Domain,Block
+  # 直连列表放在全局代理列表之前:群晖 DDNS(myds.me 等)、PT 站,以及 ScienceDirect /
+  # Elsevier / CNKI 等学术站(需校园网 IP 才能访问订阅全文)不再被 Global.list 抢去代理
+  - RULE-SET,Direct / Domain,国内
   # Proxy/Globe 历史上同指 Global.list 造成重复,这里只保留一条全局代理规则
   - RULE-SET,Proxy / Domain,国外
-  - RULE-SET,Direct / Domain,国内
   - RULE-SET,China / Domain,国内
   - RULE-SET,China / IP,国内,no-resolve
-  - RULE-SET,Private / Domain,国内
 
   - MATCH,其他
 
@@ -677,7 +698,6 @@ rule-providers:
   X / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/twitter.mrs"}
   Grok / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/xai.mrs"}
   Groq / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/groq.mrs"}
-  Copilot / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Copilot/Copilot.list"}
   Perplexity / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/perplexity.mrs"}
 
   # ---- GitHub / LinuxDo ----
