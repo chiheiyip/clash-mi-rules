@@ -30,6 +30,8 @@ proxy-providers:
     url: "机场A订阅地址"
     type: http
     interval: 86400
+    # 排除订阅里的“剩余流量 / 到期时间 / 官网”等信息假节点,避免混进测速组
+    exclude-filter: "(?i)剩余|到期|过期|官网|重置|套餐|距离下次|expire|traffic"
     health-check:
       enable: true
       url: http://www.gstatic.com/generate_204
@@ -41,6 +43,8 @@ proxy-providers:
     url: "机场B订阅地址"
     type: http
     interval: 86400
+    # 排除订阅里的“剩余流量 / 到期时间 / 官网”等信息假节点,避免混进测速组
+    exclude-filter: "(?i)剩余|到期|过期|官网|重置|套餐|距离下次|expire|traffic"
     health-check:
       enable: true
       url: http://www.gstatic.com/generate_204
@@ -89,6 +93,13 @@ tproxy-port: 7895
 
 allow-lan: true
 log-level: info
+
+# 测速只计第二次请求(排除握手),不同协议节点的延迟可直接比较
+unified-delay: true
+# 域名解析出多个 IP 时并发连接,取最先连上的
+tcp-concurrent: true
+# 路由器看不到局域网设备上的进程,关闭进程查找(PROCESS-NAME 规则在这里不会命中)
+find-process-mode: "off"
 
 external-controller: 0.0.0.0:9090
 # 控制接口密码:请改为足够复杂的自定义密码(不要用 123456)
@@ -287,7 +298,7 @@ proxy-groups:
   - name: 香港-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [香港-手动, 香港-自动]
   - name: 香港-手动
     type: select
@@ -304,7 +315,7 @@ proxy-groups:
   - name: 台湾-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [台湾-手动, 台湾-自动]
   - name: 台湾-手动
     type: select
@@ -321,7 +332,7 @@ proxy-groups:
   - name: 日本-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [日本-手动, 日本-自动]
   - name: 日本-手动
     type: select
@@ -338,7 +349,7 @@ proxy-groups:
   - name: 新加坡-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [新加坡-手动, 新加坡-自动]
   - name: 新加坡-手动
     type: select
@@ -355,7 +366,7 @@ proxy-groups:
   - name: 韩国-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [韩国-手动, 韩国-自动]
   - name: 韩国-手动
     type: select
@@ -372,7 +383,7 @@ proxy-groups:
   - name: 美国-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [美国-手动, 美国-自动]
   - name: 美国-手动
     type: select
@@ -389,7 +400,7 @@ proxy-groups:
   - name: 英国-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [英国-手动, 英国-自动]
   - name: 英国-手动
     type: select
@@ -406,7 +417,7 @@ proxy-groups:
   - name: 德国-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [德国-手动, 德国-自动]
   - name: 德国-手动
     type: select
@@ -423,7 +434,7 @@ proxy-groups:
   - name: 其他-故转
     type: fallback
     interval: 180
-    lazy: false
+    lazy: true
     proxies: [其他-手动, 其他-自动]
   - name: 其他-手动
     type: select
@@ -673,17 +684,17 @@ rule-providers:
   # apple-cn 与 apple@cn 互有对方没有的条目,两者都送 国内
   Apple-CN / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple-cn.mrs"}
   Apple-Custome / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.list"}
-  Nvidia / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Nvidia/Nvidia.list"}
-  Adobe / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Adobe/Adobe.list"}
+  Nvidia / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/nvidia.mrs"}
+  Adobe / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/adobe.mrs"}
   AdobeActivation / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/AdobeActivation/AdobeActivation.list"}
 
   # ---- 游戏 ----
   Steam / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/steam.mrs"}
-  Epic / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Epic/Epic.list"}
-  EA / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/EA/EA.list"}
+  Epic / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/epicgames.mrs"}
+  EA / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/ea.mrs"}
   Blizzard / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Blizzard/Blizzard.list"}
-  UBI / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/UBI/UBI.list"}
-  PlayStation / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/PlayStation/PlayStation.list"}
+  UBI / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/ubisoft.mrs"}
+  PlayStation / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/playstation.mrs"}
   Nintend / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Nintendo/Nintendo.list"}
 
   # ---- Crypto ----
