@@ -39,15 +39,10 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# fake-ip-filter contains `geosite:cn`; provide the official database up front
-# so config testing does not depend on mihomo's own DNS/bootstrap path.
-if [[ -n "${GEOSITE_DAT:-}" ]]; then
-  cp "$GEOSITE_DAT" "$TMP/GeoSite.dat"
-else
-  curl -fsSL \
-    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" \
-    -o "$TMP/GeoSite.dat"
-fi
+# GeoSite.dat is deliberately NOT pre-provided: no config references geosite
+# any more (fake-ip-filter uses rule-set:China / Domain), and the test should
+# prove that. The GeoIP mmdb (dns.fallback-filter) and ASN database (IP-ASN)
+# are still provided up front so the test does not depend on mirror uptime.
 if [[ -n "${GEOIP_DAT:-}" ]]; then
   cp "$GEOIP_DAT" "$TMP/GeoIP.metadb"
 else
@@ -75,10 +70,11 @@ for src in "${EXTRA[@]}"; do
 import sys
 src, out = sys.argv[1], sys.argv[2]
 txt = open(src, encoding="utf-8").read()
-# Replace the airport-subscription placeholders with a valid HTTP provider
-# URL (a reachable mihomo-provider payload), and the secret with a safe value.
-txt = txt.replace("机场A订阅地址", "https://gist.githubusercontent.com/chiheiyip/clash-mi-rules/raw/provider/direct.yml")
-txt = txt.replace("机场B订阅地址", "https://gist.githubusercontent.com/chiheiyip/clash-mi-rules/raw/provider/direct2.yml")
+# Replace the airport-subscription placeholders with syntactically valid URLs
+# and the secret with a safe value. `mihomo -t` validates the config only; it
+# does not depend on the subscription content, so the URLs need not resolve.
+txt = txt.replace("机场A订阅地址", "https://example.com/clash-mi-rules-ci/sub-a.yaml")
+txt = txt.replace("机场B订阅地址", "https://example.com/clash-mi-rules-ci/sub-b.yaml")
 txt = txt.replace("CHANGE_ME_TO_A_LONG_RANDOM_SECRET", "ci-sanitized-secret-please-ignore")
 open(out, "w", encoding="utf-8").write(txt)
 PY

@@ -6,8 +6,11 @@ Runs the set of deterministic checks that CI also runs:
   1. YAML syntax parse of every *.yaml at repo root.
   2. Structural consistency across the three configs
      (rule-source URL parity, dns-recursion guard, no-interface-binding guard,
-      and secret guard).
-  3. URLs are validated separately by `check_rules.py` (network) — this file
+      secret / placeholder guard).
+  3. Three-config parity: the two OpenClash configs must match
+     clash-mi-detail.yaml rule-by-rule and group-by-group, except for the
+     documented differences (IPv6, DNS fallback, find-process-mode, listeners).
+  4. URLs are validated separately by `check_rules.py` (network) — this file
      is offline-only and never touches the network.
 
 Usage:
@@ -17,6 +20,7 @@ Usage:
 Exit code 0 = all checks pass. Non-zero = at least one check failed.
 """
 import argparse
+import copy
 import glob
 import os
 import re
@@ -51,7 +55,26 @@ RULE_URL_PREFIXES = (
 )
 
 # placeholder markers that must be replaced before real deployment
-PLACEHOLDER_MARKERS = ("机场A订阅地址", "机场B订阅地址", "CHANGE_ME_")
+# (the CHANGE_ME_ secret has its own, more specific warning below)
+PLACEHOLDER_MARKERS = ("机场A订阅地址", "机场B订阅地址", "YOUR_VLESS_UUID_PLACEHOLDER")
+
+UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+# --- three-config parity ----------------------------------------------------
+# The OpenClash configs are hand-maintained copies of clash-mi-detail.yaml.
+# Everything must match the general config except the documented differences
+# below; anything else is drift (an edit applied to one file but not the others).
+REFERENCE_CONFIG = "clash-mi-detail.yaml"
+ROUTER_CONFIGS = ("openclash.yaml", "openclash-backnode.yaml")
+# top-level / dns keys that may legitimately differ between the configs
+PARITY_SKIP_TOP = {"ipv6", "find-process-mode", "listeners"}
+PARITY_SKIP_DNS = {"ipv6", "fallback", "fallback-filter"}
+# IPv6 private-range direct rules exist only where IPv6 is enabled
+IPV6_PRIVATE_RULES = {
+    "IP-CIDR6,::1/128,直连,no-resolve",
+    "IP-CIDR6,fc00::/7,直连,no-resolve",
+    "IP-CIDR6,fe80::/10,直连,no-resolve",
+}
 
 errors = []
 warnings = []
@@ -109,6 +132,19 @@ def check_yaml(path):
     live = "\n".join(
         ln for ln in raw.splitlines() if not ln.lstrip().startswith("#")
     )
+
+    # --- deployment placeholders (expected in the template, must be replaced on deploy) ---
+    present = [m for m in PLACEHOLDER_MARKERS if m in live]
+    if present:
+        warn(f"{path}: deployment placeholders still present (fill in before use): {present}")
+
+    # --- VLESS listener users ---
+    for lst in data.get("listeners") or []:
+        for user in (lst or {}).get("users") or []:
+            uuid = str((user or {}).get("uuid", ""))
+            if uuid != "YOUR_VLESS_UUID_PLACEHOLDER" and not UUID_RE.match(uuid):
+                warn(f"{path}: listener {lst.get('name')!r} uuid is not a standard UUID: {uuid!r}")
+
     for m in re.finditer(r"([\w./-]+)#(apcli\w+|eth\w+|wwan\w+|pppoe\w+|usb\w+)", live):
         err(f"{path}: hard-coded interface binding found in live config (breaks portability): {m.group(0)}")
 
@@ -163,6 +199,63 @@ def check_consistency(paths, loaded):
             if urls != reference_urls:
                 err(f"{p}: external rule-source pool differs from {reference_path}")
 
+
+def _normalize(data):
+    """Drop the documented per-config differences so the rest can be compared."""
+    d = copy.deepcopy(data)
+    for k in PARITY_SKIP_TOP:
+        d.pop(k, None)
+    dns = d.get("dns")
+    if isinstance(dns, dict):
+        for k in PARITY_SKIP_DNS:
+            dns.pop(k, None)
+    d["rules"] = [r for r in d.get("rules") or [] if r not in IPV6_PRIVATE_RULES]
+    return d
+
+
+def _first_rule_diff(a, b):
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x != y:
+            return f"rule #{i + 1}: {x!r} != {y!r}"
+    return f"rule count {len(a)} != {len(b)}"
+
+
+def check_parity(loaded):
+    """Rule-by-rule / group-by-group parity of the router configs vs the general one."""
+    by_name = {os.path.basename(p): (p, d) for p, d in loaded.items()}
+    if REFERENCE_CONFIG not in by_name:
+        return
+    _, ref = by_name[REFERENCE_CONFIG]
+    ref_n = _normalize(ref)
+    for name in ROUTER_CONFIGS:
+        if name not in by_name:
+            continue
+        path, data = by_name[name]
+
+        # the documented differences must actually hold
+        if data.get("ipv6") is not False or (data.get("dns") or {}).get("ipv6") is not False:
+            err(f"{path}: router configs must set top-level ipv6 and dns.ipv6 to false")
+        fpm = data.get("find-process-mode")
+        if fpm != "off":
+            # YAML 1.1 parsers (incl. OpenClash's Ruby tooling) read a bare `off` as false
+            err(f"{path}: find-process-mode must be the quoted string \"off\" (got {fpm!r})")
+        has_listeners = "listeners" in data
+        if has_listeners != (name == "openclash-backnode.yaml"):
+            err(f"{path}: listeners block belongs only in openclash-backnode.yaml")
+
+        # everything else must match the general config
+        cur_n = _normalize(data)
+        for key in sorted(set(ref_n) | set(cur_n)):
+            a, b = ref_n.get(key), cur_n.get(key)
+            if a == b:
+                continue
+            if key == "rules" and isinstance(a, list) and isinstance(b, list):
+                detail = _first_rule_diff(a, b)
+            else:
+                detail = "values differ"
+            err(f"{path}: drift from {REFERENCE_CONFIG} in {key!r} ({detail})")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("configs", nargs="*")
@@ -183,6 +276,7 @@ def main():
         if missing:
             err(f"repository is missing expected config(s): {sorted(missing)}")
     check_consistency(paths, loaded)
+    check_parity(loaded)
 
     for w in warnings:
         print(f"[warn ] {w}")
