@@ -10,7 +10,7 @@ mode: rule
 #   AI:ChatGPT / Claude / Gemini / Grok / 其他AI(Meta AI、Copilot、Perplexity、Groq 等)
 #   独立站点:GitHub / LinuxDo
 #   社交:X / Instagram / Telegram / WhatsApp / Facebook / TikTok / Discord / Reddit
-#   流媒体:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Amazon、Crunchyroll、Popcorn 等)
+#   流媒体:Netflix / YouTube / Spotify / Stream Media(Disney、HBO、Prime Video、Crunchyroll、Popcorn 等)
 #   云与系统:Google / Microsoft / Apple / Nvidia / Cloud(Adobe 等)
 #   游戏:Games(Steam、Epic、EA、Blizzard、UBI、PlayStation、Nintendo 等)
 #   Crypto:Crypto(OKX、Bybit、Binance、Kraken、Bybit EU、Ether.fi、Trading 212、Monese、Myfin、Altery)
@@ -458,12 +458,16 @@ rules:
   # - DOMAIN,browser-intake-us5-datadoghq.com,Claude
   # - DOMAIN-KEYWORD,datadog,Claude
   # - DOMAIN-KEYWORD,sift,Claude
+  # 官方规则集 geosite/anthropic:补充 claude.app / claude.dev / ant.dev 等新域名;
+  # 另含 Anthropic 专用的 Sentry/Datadog 上报主机(精确主机名,副作用极小)
   - RULE-SET,Claude / Domain,Claude
   - RULE-SET,Gemini / Domain,Gemini
   - RULE-SET,Grok / Domain,Grok        # xAI 生态(grok.com / x.ai)
   # 其余 AI(Meta AI/Copilot/Perplexity/Groq 等)→ 其他AI 组
   - RULE-SET,Groq / Domain,其他AI
-  - RULE-SET,Meta AI / Domain,其他AI
+  # Meta AI 只配 meta.ai:geosite/meta 含 facebook/instagram/whatsapp,放在社交规则前会吞掉这三个组
+  - DOMAIN-SUFFIX,meta.ai,其他AI
+  - DOMAIN,ai.meta.com,其他AI
   - RULE-SET,Copilot / Domain,其他AI
   - RULE-SET,Perplexity / Domain,其他AI
 
@@ -483,6 +487,15 @@ rules:
   - RULE-SET,Discord / Domain,Discord
   - RULE-SET,Reddit / Domain,Reddit
 
+  # ---- 国内子集 ----
+  # 放在 AI/社交之后、流媒体/云/游戏之前:Windows/Apple 更新、Steam 国内 CDN、
+  # 亚马逊中国等直连,不消耗代理流量。
+  - RULE-SET,Microsoft@cn / Domain,国内
+  - RULE-SET,Apple@cn / Domain,国内
+  - RULE-SET,Apple-CN / Domain,国内
+  - RULE-SET,Steam@cn / Domain,国内
+  - RULE-SET,Amazon@cn / Domain,国内
+
   # ---- 流媒体 ----
   - RULE-SET,Netflix / Domain,Netflix
   - RULE-SET,Netflix / IP,Netflix,no-resolve
@@ -490,7 +503,7 @@ rules:
   - RULE-SET,Spotify / Domain,Spotify
   - RULE-SET,Disney / Domain,Stream Media
   - RULE-SET,HBO / Domain,Stream Media
-  - RULE-SET,Amazon / Domain,Stream Media
+  - RULE-SET,PrimeVideo / Domain,Stream Media
   # Crunchyroll / Popcorn 合并为 Anime(统一走 geosite/anime.mrs 动漫合集)
   - RULE-SET,Anime / Domain,Stream Media
 
@@ -499,7 +512,6 @@ rules:
   - RULE-SET,Google / IP,Google,no-resolve
   - RULE-SET,Microsoft / Domain,Microsoft
   - RULE-SET,Apple / Domain,Apple
-  - RULE-SET,Apple-CN / Domain,Apple
   - RULE-SET,Apple-Custome / Domain,Apple
   - RULE-SET,Nvidia / Domain,Nvidia
   # Adobe 等 → Cloud 兜底组
@@ -587,13 +599,12 @@ rule-providers:
   # ============================================================================
   # ---- AI ----
   ChatGPT / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/openai.mrs"}
-  Claude / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Claude/Claude.list"}
-  Gemini / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Gemini/Gemini.list"}
+  Claude / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anthropic.mrs"}
+  Gemini / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/google-gemini.mrs"}
   X / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/x.mrs"}
   X / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/twitter.mrs"}
   Grok / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/xai.mrs"}
   Groq / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/groq.mrs"}
-  Meta AI / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/meta.mrs"}
   Copilot / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Copilot/Copilot.list"}
   Perplexity / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/perplexity.mrs"}
 
@@ -611,6 +622,12 @@ rule-providers:
   Discord / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/discord.mrs"}
   Reddit / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/reddit.mrs"}
 
+  # ---- 国内子集(→ 国内) ----
+  Microsoft@cn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/microsoft@cn.mrs"}
+  Apple@cn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple@cn.mrs"}
+  Steam@cn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/steam@cn.mrs"}
+  Amazon@cn / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon@cn.mrs"}
+
   # ---- 流媒体 ----
   Netflix / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/netflix.mrs"}
   Netflix / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/netflix.mrs"}
@@ -618,7 +635,8 @@ rule-providers:
   Spotify / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/spotify.mrs"}
   Disney / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/disney.mrs"}
   HBO / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/hbo.mrs"}
-  Amazon / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/amazon.mrs"}
+  # 只取 Prime Video:geosite/amazon 含 +.amazonaws.com / +.cloudfront.net,会把大量无关网站送进流媒体组
+  PrimeVideo / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/primevideo.mrs"}
   # Crunchyroll/Popcorn 无独立规则集,合并为 Anime 统一走 geosite/anime.mrs(动漫合集,含 ACG 站点)
   Anime / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/anime.mrs"}
 
@@ -627,6 +645,7 @@ rule-providers:
   Google / IP: {<<: *ip, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geoip/google.mrs"}
   Microsoft / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/microsoft.mrs"}
   Apple / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple.mrs"}
+  # apple-cn 与 apple@cn 互有对方没有的条目,两者都送 国内
   Apple-CN / Domain: {<<: *domain, url: "https://gh-proxy.com/github.com/metacubex/meta-rules-dat/raw/refs/heads/meta/geo/geosite/apple-cn.mrs"}
   Apple-Custome / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.list"}
   Nvidia / Domain: {<<: *class, url: "https://gh-proxy.com/raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Nvidia/Nvidia.list"}
